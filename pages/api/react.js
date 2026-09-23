@@ -2,7 +2,7 @@ import { sendError, sendSuccess, ERROR_CODES } from '../../lib/errors';
 import { getClientIpFromRequest, hashIp } from '../../lib/ip';
 import { findVipKey, findDevKey, validateKeyStatus, checkHostRestriction, checkAndBumpKeyRateLimit } from '../../lib/keys';
 import { getSettings } from '../../lib/settings';
-import { submitReaction } from '../../lib/reactFlow';
+import { submitReaction, ReactFlowError } from '../../lib/reactFlow';
 import { logEvent } from '../../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '10kb' } } };
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     const result = await submitReaction({ url, reaction, plan, identifier, requestId });
     return sendSuccess(res, result);
   } catch (err) {
-    if (err && err.code) {
+    if (err instanceof ReactFlowError) {
       return sendError(res, ERROR_CODES[err.code] || err.code, err.message);
     }
     console.error('react handler error', err);
