@@ -1,7 +1,7 @@
 import { sendError, sendSuccess, ERROR_CODES } from '../../../lib/errors';
 import { findDevKey, validateKeyStatus, checkHostRestriction, checkAndBumpKeyRateLimit } from '../../../lib/keys';
 import { getSettings } from '../../../lib/settings';
-import { submitReaction } from '../../../lib/reactFlow';
+import { submitReaction, ReactFlowError } from '../../../lib/reactFlow';
 import { logEvent } from '../../../lib/logger';
 
 // Public DEV API - see /docs. Server-to-server, authenticated via x-api-key.
@@ -35,9 +35,9 @@ export default async function handler(req, res) {
     const result = await submitReaction({ url, reaction, plan: 'DEV', identifier, requestId });
     return sendSuccess(res, result);
   } catch (err) {
-    if (err && err.code) return sendError(res, ERROR_CODES[err.code] || err.code, err.message);
+    if (err instanceof ReactFlowError) return sendError(res, ERROR_CODES[err.code] || err.code, err.message);
     console.error('v1 react handler error', err);
     logEvent('v1_react_handler_error', String(err?.message || err)).catch(() => {});
     return sendError(res, ERROR_CODES.INTERNAL_ERROR, 'Terjadi kesalahan pada server.');
   }
-  }
+}
