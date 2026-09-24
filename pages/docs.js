@@ -80,7 +80,13 @@ export default function Docs() {
     <Layout title="Docs" description="Dokumentasi API ReactionWA untuk developer.">
       <section className="page-header">
         <h1>Reaction API</h1>
-        <p>Dokumentasi untuk pengguna plan DEV.</p>
+        <p>Dokumentasi untuk developer yang punya DEV Key (API access).</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          Catatan: ini beda dari kode redeem tipe &quot;DEV&quot; di halaman{' '}
+          <a href="/redeem">/redeem</a> (yang meng-upgrade plan browsing di
+          website ini). DEV Key di bawah ini untuk memanggil API dari server
+          kamu sendiri (curl, backend, dsb), diminta terpisah ke Owner.
+        </p>
       </section>
 
       <div className="card docs-card">

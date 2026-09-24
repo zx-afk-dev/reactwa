@@ -36,12 +36,12 @@ export default function Redeem() {
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       <section className="page-header">
         <h1>Redeem Code</h1>
-        <p>Masukkan kode redeem untuk mendapatkan coin tambahan.</p>
+        <p>Tukarkan kode dari Owner untuk mendapatkan coin tambahan, atau upgrade ke plan VIP/DEV.</p>
       </section>
       <form className="card redeem-card" onSubmit={handleSubmit}>
         <input
           className="input"
-          placeholder="RDM-XXXXXXXX"
+          placeholder="RDM-XXXXXXXX / VIP-XXXXXXXX / DEV-XXXXXXXX"
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           disabled={loading}
