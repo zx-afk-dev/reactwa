@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 
-const emptyForm = { coin: 10, maxUses: 100, expiresAt: '', status: 'active' };
+const emptyForm = { type: 'coin', coin: 10, maxUses: 100, durationDays: 30, expiresAt: '', status: 'active' };
 
 export default function AdminRedeem() {
   const [items, setItems] = useState([]);
@@ -42,15 +42,33 @@ export default function AdminRedeem() {
     load();
   }
 
+  const isPlanType = form.type === 'vip' || form.type === 'dev';
+
   return (
     <AdminLayout title="Redeem Codes">
       <form className="card admin-form" onSubmit={create}>
         <h3>Buat Redeem Code Baru</h3>
         <div className="form-grid">
-          <label>Coin<input className="input" type="number" value={form.coin} onChange={(e) => setForm({ ...form, coin: Number(e.target.value) })} /></label>
+          <label>Tipe Kode
+            <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <option value="coin">Coin</option>
+              <option value="vip">VIP (upgrade plan)</option>
+              <option value="dev">DEV (upgrade plan)</option>
+            </select>
+          </label>
           <label>Maksimal Penggunaan<input className="input" type="number" value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: Number(e.target.value) })} /></label>
-          <label>Expiry (opsional)<input className="input" type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></label>
+          <label>{isPlanType ? 'Coin Bonus (opsional)' : 'Coin'}<input className="input" type="number" value={form.coin} onChange={(e) => setForm({ ...form, coin: Number(e.target.value) })} /></label>
+          {isPlanType && (
+            <label>Durasi Plan (hari)<input className="input" type="number" value={form.durationDays} onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })} /></label>
+          )}
+          <label>Expiry Kode (opsional)<input className="input" type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></label>
         </div>
+        {isPlanType && (
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: -4, marginBottom: 12 }}>
+            Kode tipe {form.type.toUpperCase()} akan meng-upgrade plan identitas (browser) yang menukarkannya di halaman
+            /redeem selama {form.durationDays} hari, lalu otomatis kembali ke Free.
+          </p>
+        )}
         <button className="btn btn-primary">Buat Kode</button>
       </form>
 
@@ -58,7 +76,9 @@ export default function AdminRedeem() {
         <DataTable
           columns={[
             { key: 'id', label: 'Kode' },
-            { key: 'coin', label: 'Coin' },
+            { key: 'type', label: 'Tipe', render: (r) => (r.type || 'coin').toUpperCase() },
+            { key: 'coin', label: 'Coin', render: (r) => r.coin || 0 },
+            { key: 'durationDays', label: 'Durasi', render: (r) => (r.type === 'vip' || r.type === 'dev') ? `${r.durationDays || 30} hari` : '-' },
             { key: 'usedCount', label: 'Digunakan', render: (r) => `${r.usedCount || 0}/${r.maxUses || '∞'}` },
             { key: 'status', label: 'Status' },
           ]}
