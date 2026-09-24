@@ -5,6 +5,7 @@ import Toast from './Toast';
 
 const EMOJIS = ['🥳', '👍', '❤️', '😂', '😮', '😢', '🙏', '🔥'];
 const POLL_INTERVAL_MS = 1500;
+const MAX_SELECTED = 3;
 
 function maskIp(ip) {
   if (!ip) return '-';
@@ -16,12 +17,12 @@ function maskIp(ip) {
 export default function ReactionForm() {
   const [url, setUrl] = useState('');
   const [selected, setSelected] = useState([]);
+  const [customDraft, setCustomDraft] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [ip, setIp] = useState('');
   const [coin, setCoin] = useState(null);
-  const [vipKey, setVipKey] = useState('');
-  const [devKey, setDevKey] = useState('');
-  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [plan, setPlan] = useState('FREE');
+  const [planExpiresAt, setPlanExpiresAt] = useState(null);
   const [phase, setPhase] = useState('idle'); // idle | validating | waiting | processing | success | failed
   const [message, setMessage] = useState('');
   const [queuePosition, setQueuePosition] = useState(null);
@@ -39,18 +40,55 @@ export default function ReactionForm() {
       .then((r) => r.json())
       .then((d) => setIp(d.ip))
       .catch(() => setIp(''));
+
+    // Tells us whether this browser identity already has an active VIP/DEV
+    // plan (from a previously redeemed code on /redeem) so the form can show
+    // the right coin cost / plan badge before the first submit.
+    fetch('/api/me')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.success) return;
+        setPlan(d.plan);
+        setCoin(d.coin);
+        setPlanExpiresAt(d.planExpiresAt);
+      })
+      .catch(() => {});
+
     return () => clearInterval(pollRef.current);
   }, []);
+
+  const hasCustom = selected.some((e) => !EMOJIS.includes(e));
+  const coinCost = hasCustom ? 2 : 1;
+  const isFree = plan === 'FREE';
 
   function toggleEmoji(emoji) {
     setSelected((prev) => {
       if (prev.includes(emoji)) return prev.filter((e) => e !== emoji);
-      if (prev.length >= 3) {
-        setToast({ type: 'error', text: 'Maksimal 3 emoji reaction.' });
+      if (prev.length >= MAX_SELECTED) {
+        setToast({ type: 'error', text: `Maksimal ${MAX_SELECTED} emoji reaction.` });
         return prev;
       }
       return [...prev, emoji];
     });
+  }
+
+  function addCustomEmoji() {
+    const val = customDraft.trim();
+    if (!val) return;
+    if (selected.length >= MAX_SELECTED) {
+      setToast({ type: 'error', text: `Maksimal ${MAX_SELECTED} emoji reaction.` });
+      return;
+    }
+    if (selected.includes(val)) {
+      setToast({ type: 'error', text: 'Emoji ini sudah dipilih.' });
+      return;
+    }
+    setSelected((prev) => [...prev, val]);
+    setCustomDraft('');
+  }
+
+  function removeCustomEmoji(emoji) {
+    setSelected((prev) => prev.filter((e) => e !== emoji));
   }
 
   function handleStatusUpdate(data) {
@@ -105,8 +143,6 @@ export default function ReactionForm() {
           url: url.trim(),
           reaction: selected,
           agreeTerms,
-          vipKey: vipKey || undefined,
-          devKey: devKey || undefined,
           requestId,
           website: honeypotRef.current?.value || undefined,
         }),
@@ -148,19 +184,37 @@ export default function ReactionForm() {
           disabled={!canSubmit}
         />
 
-        <label className="field-label" style={{ marginTop: 18 }}>Pilih Reaction (maks. 3)</label>
+        <label className="field-label" style={{ marginTop: 18 }}>Pilih Reaction (maks. {MAX_SELECTED})</label>
         <EmojiPicker emojis={EMOJIS} selected={selected} onToggle={toggleEmoji} disabled={!canSubmit} />
 
-        <button type="button" className="link-toggle" onClick={() => setShowKeyInput((v) => !v)}>
-          {showKeyInput ? 'Sembunyikan opsi VIP/DEV key' : 'Punya VIP / DEV key?'}
-        </button>
-        {showKeyInput && (
-          <div className="key-inputs">
-            <input className="input" placeholder="VIP-XXXXXXXXXXXX" value={vipKey}
-              onChange={(e) => { setVipKey(e.target.value); setDevKey(''); }} disabled={!canSubmit} />
-            <input className="input" placeholder="DEV-XXXXXXXXXXXX" value={devKey}
-              onChange={(e) => { setDevKey(e.target.value); setVipKey(''); }} disabled={!canSubmit} />
+        <div className="custom-emoji-row">
+          <input
+            className="input"
+            placeholder="Atau ketik emoji sendiri 😉 (pakai keyboard emoji HP)"
+            value={customDraft}
+            onChange={(e) => setCustomDraft(e.target.value)}
+            disabled={!canSubmit}
+            maxLength={16}
+          />
+          <button type="button" className="btn btn-secondary" onClick={addCustomEmoji} disabled={!canSubmit}>
+            Tambah
+          </button>
+        </div>
+        {selected.some((e) => !EMOJIS.includes(e)) && (
+          <div className="custom-emoji-chips">
+            {selected.filter((e) => !EMOJIS.includes(e)).map((e) => (
+              <span className="chip" key={e}>
+                {e}
+                <button type="button" onClick={() => removeCustomEmoji(e)} disabled={!canSubmit} aria-label="Hapus">✕</button>
+              </span>
+            ))}
           </div>
+        )}
+        {hasCustom && isFree && (
+          <p className="custom-emoji-note">✨ Kamu memakai emoji custom - biaya request ini <strong>2 coin</strong>.</p>
+        )}
+        {hasCustom && !isFree && (
+          <p className="custom-emoji-note">✨ Emoji custom - gratis untuk plan {plan}.</p>
         )}
 
         <label className="checkbox-row">
@@ -169,12 +223,19 @@ export default function ReactionForm() {
         </label>
 
         <div className="reaction-footer">
-          <CoinDisplay coin={coin} />
+          {isFree ? (
+            <CoinDisplay coin={coin} />
+          ) : (
+            <div className="plan-badge">
+              ⭐ Plan {plan}
+              {planExpiresAt ? ` · aktif sampai ${new Date(planExpiresAt).toLocaleDateString('id-ID')}` : ''}
+            </div>
+          )}
           <div className="ip-badge" title="Digunakan sebagai salah satu identitas kuota">IP: {maskIp(ip)}</div>
         </div>
 
         <button type="submit" className="btn btn-primary btn-block" disabled={!canSubmit}>
-          {canSubmit ? 'React Sekarang' : 'Memproses...'}
+          {!canSubmit ? 'Memproses...' : isFree ? `React Sekarang (${coinCost} coin)` : 'React Sekarang'}
         </button>
       </form>
 
