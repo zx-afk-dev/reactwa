@@ -4,9 +4,8 @@ import { useRouter } from 'next/router';
 const ITEMS = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/users', label: 'Users' },
-  { href: '/admin/vip', label: 'VIP Keys' },
-  { href: '/admin/dev', label: 'DEV Keys' },
-  { href: '/admin/redeem', label: 'Redeem' },
+  { href: '/admin/dev', label: 'DEV Keys (API)' },
+  { href: '/admin/redeem', label: 'Redeem Codes' },
   { href: '/admin/pricing', label: 'Pricing' },
   { href: '/admin/promotions', label: 'Promotions' },
   { href: '/admin/queue', label: 'Queue' },
