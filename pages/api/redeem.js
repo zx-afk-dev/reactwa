@@ -25,7 +25,16 @@ export default async function handler(req, res) {
       };
       return sendError(res, ERROR_CODES.VALIDATION_ERROR, messages[result.reason] || 'Kode tidak valid.', { reason: result.reason });
     }
-    return sendSuccess(res, { message: `Berhasil! +${result.coin} coin ditambahkan.`, coin: result.coin });
+
+    let message;
+    if (result.type === 'vip' || result.type === 'dev') {
+      message = `Selamat! Akun kamu sekarang plan ${result.plan} selama ${result.durationDays} hari`
+        + (result.coin ? ` + ${result.coin} coin bonus` : '') + '.';
+    } else {
+      message = `Berhasil! +${result.coin} coin ditambahkan.`;
+    }
+
+    return sendSuccess(res, { message, type: result.type, plan: result.plan || null, coin: result.coin || 0 });
   } catch (err) {
     console.error('redeem error', err);
     return sendError(res, ERROR_CODES.INTERNAL_ERROR, 'Terjadi kesalahan pada server.');

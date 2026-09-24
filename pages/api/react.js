@@ -1,7 +1,5 @@
 import { sendError, sendSuccess, ERROR_CODES } from '../../lib/errors';
 import { getClientIpFromRequest, hashIp } from '../../lib/ip';
-import { findVipKey, findDevKey, validateKeyStatus, checkHostRestriction, checkAndBumpKeyRateLimit } from '../../lib/keys';
-import { getSettings } from '../../lib/settings';
 import { submitReaction, ReactFlowError } from '../../lib/reactFlow';
 import { logEvent } from '../../lib/logger';
 
@@ -17,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { url, reaction, agreeTerms, vipKey, devKey, requestId, website } = req.body || {};
+    const { url, reaction, agreeTerms, requestId, website } = req.body || {};
 
     // Honeypot: real users never fill this hidden field. Silently reject bots.
     if (website) {
@@ -27,36 +25,14 @@ export default async function handler(req, res) {
       return sendError(res, ERROR_CODES.TERMS_REQUIRED, 'Kamu harus menyetujui Ketentuan & Syarat Penggunaan.');
     }
 
-    const settings = await getSettings();
+    // Identity is always the hashed visitor IP. VIP/DEV plans are no longer
+    // submitted per-request as a key - they're redeemed once on /redeem and
+    // persist on this identity (with an expiry) - see lib/redeem.js and
+    // lib/coin.js's getOrCreateUser.
     const ip = getClientIpFromRequest(req);
-    const ipHash = hashIp(ip);
+    const identifier = hashIp(ip);
 
-    let plan = 'FREE';
-    let planKeyId = null;
-
-    if (devKey) {
-      const key = await findDevKey(devKey);
-      const status = validateKeyStatus(key);
-      if (!status.valid) return sendError(res, ERROR_CODES[status.reason], 'DEV key tidak valid atau kedaluwarsa.');
-      const hostCheck = checkHostRestriction(key, req);
-      if (!hostCheck.valid) return sendError(res, ERROR_CODES.HOST_NOT_ALLOWED, 'DEV key tidak diizinkan dari host ini.');
-      const rl = await checkAndBumpKeyRateLimit('devKeys', key.id, key.rateLimitPerMinute ?? settings.devRateLimitPerMinute);
-      if (!rl.ok) return sendError(res, ERROR_CODES.RATE_LIMIT, 'Rate limit DEV key tercapai. Coba lagi sebentar lagi.');
-      plan = 'DEV';
-      planKeyId = key.id;
-    } else if (vipKey) {
-      const key = await findVipKey(vipKey);
-      const status = validateKeyStatus(key);
-      if (!status.valid) return sendError(res, ERROR_CODES[status.reason], 'VIP key tidak valid atau kedaluwarsa.');
-      const rl = await checkAndBumpKeyRateLimit('vipKeys', key.id, key.rateLimitPerMinute ?? settings.vipRateLimitPerMinute);
-      if (!rl.ok) return sendError(res, ERROR_CODES.RATE_LIMIT, 'Rate limit VIP key tercapai. Coba lagi sebentar lagi.');
-      plan = 'VIP';
-      planKeyId = key.id;
-    }
-
-    const identifier = planKeyId ? `${plan.toLowerCase()}:${planKeyId}` : ipHash;
-
-    const result = await submitReaction({ url, reaction, plan, identifier, requestId });
+    const result = await submitReaction({ url, reaction, identifier, requestId });
     return sendSuccess(res, result);
   } catch (err) {
     if (err instanceof ReactFlowError) {
