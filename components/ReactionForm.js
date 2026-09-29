@@ -4,7 +4,8 @@ import CoinDisplay from './CoinDisplay';
 import Toast from './Toast';
 
 const EMOJIS = ['🥳', '👍', '❤️', '😂', '😮', '😢', '🙏', '🔥'];
-const POLL_INTERVAL_MS = 1500;
+const POLL_INTERVAL_MS = 4000;
+const MAX_POLL_MS = 10 * 60 * 1000;
 const MAX_SELECTED = 3;
 
 function maskIp(ip) {
@@ -28,6 +29,7 @@ export default function ReactionForm() {
   const [queuePosition, setQueuePosition] = useState(null);
   const [toast, setToast] = useState(null);
   const pollRef = useRef(null);
+  const pollStartedAtRef = useRef(0);
   const honeypotRef = useRef(null);
 
   useEffect(() => {
@@ -115,7 +117,14 @@ export default function ReactionForm() {
 
   function startPolling(requestId) {
     clearInterval(pollRef.current);
+    pollStartedAtRef.current = Date.now();
     pollRef.current = setInterval(async () => {
+      if (Date.now() - pollStartedAtRef.current >= MAX_POLL_MS) {
+        clearInterval(pollRef.current);
+        setPhase('failed');
+        setMessage('Status belum selesai setelah beberapa menit. Kamu bisa cek lagi dengan request ID dari log/request sebelumnya.');
+        return;
+      }
       try {
         const resp = await fetch(`/api/queue-status?requestId=${encodeURIComponent(requestId)}`);
         const data = await resp.json();
