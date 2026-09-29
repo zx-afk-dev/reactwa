@@ -6,14 +6,14 @@ export default withAdminAuth(async (req, res) => {
   if (req.method !== 'GET') return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
   try {
     const [waitingSnap, processingSnap, lockSnap, recentSnap] = await Promise.all([
-      db.collection('queueTasks').where('status', '==', 'waiting').get(),
-      db.collection('queueTasks').where('status', '==', 'processing').get(),
+      db.collection('queueTasks').where('status', '==', 'waiting').count().get(),
+      db.collection('queueTasks').where('status', '==', 'processing').count().get(),
       db.collection('queue').doc('lock').get(),
       db.collection('queueTasks').orderBy('createdAt', 'desc').limit(30).get(),
     ]);
     return sendSuccess(res, {
-      waiting: waitingSnap.size,
-      processing: processingSnap.size,
+      waiting: waitingSnap.data().count,
+      processing: processingSnap.data().count,
       lock: lockSnap.exists ? lockSnap.data() : null,
       recent: recentSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
     });
