@@ -5,8 +5,10 @@ const LINKS = [
   { href: '/', label: 'Reaction' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
+  { href: '/dev', label: 'Developer' },
   { href: '/status', label: 'Status' },
   { href: '/redeem', label: 'Redeem' },
+  { href: '/changelog', label: 'Changelog' },
 ];
 
 export default function Navbar() {
