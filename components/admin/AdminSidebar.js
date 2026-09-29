@@ -5,6 +5,7 @@ const ITEMS = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/dev', label: 'DEV Keys (API)' },
+  { href: '/admin/rate-limit', label: 'Rate Limit' },
   { href: '/admin/redeem', label: 'Redeem Codes' },
   { href: '/admin/pricing', label: 'Pricing' },
   { href: '/admin/promotions', label: 'Promotions' },
