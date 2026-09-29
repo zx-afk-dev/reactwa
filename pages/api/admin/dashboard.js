@@ -11,13 +11,13 @@ export default withAdminAuth(async (req, res) => {
       getTotalStats(),
       getRecentSeries('daily', 14),
       getSettings(),
-      db.collection('queueTasks').where('status', '==', 'waiting').get(),
+      db.collection('queueTasks').where('status', '==', 'waiting').count().get(),
     ]);
     return sendSuccess(res, {
       total,
       daily,
       maintenance: settings.maintenance,
-      queueWaiting: waitingSnap.size,
+      queueWaiting: waitingSnap.data().count,
     });
   } catch (err) {
     console.error('dashboard error', err);
