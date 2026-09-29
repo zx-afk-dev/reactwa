@@ -28,11 +28,12 @@ jobs:
 
           for i in 1 2 3 4 5; do
             echo "Queue pass $i/5"
-            curl --fail --silent --show-error --max-time 45 \
+            response="$(curl --fail --silent --show-error --max-time 45 \
               -H "Authorization: Bearer $CRON_SECRET" \
               -H "Accept: application/json" \
               -X POST \
-              "https://react.v1.zfile.web.id/api/cron/queue" || true
+              "https://react.v1.zfile.web.id/api/cron/queue")"
+            echo "Queue response: $response"
 
             if [ "$i" -lt 5 ]; then
               sleep 60
