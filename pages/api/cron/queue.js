@@ -12,8 +12,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    await drainQueue(1);
-    return res.status(200).json({ success: true });
+    const results = await drainQueue(1);
+    const processed = results.filter((item) => item?.processed).length;
+    return res.status(200).json({ success: true, processed, results });
   } catch (err) {
     console.error('queue cron error', err);
     return res.status(500).json({ success: false, message: 'Queue worker failed.' });
