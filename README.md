@@ -48,7 +48,8 @@ Buka `http://localhost:3000`.
 4. Dari file JSON tersebut, isi ke `.env.local`:
    - `FIREBASE_PROJECT_ID` = `project_id`
    - `FIREBASE_CLIENT_EMAIL` = `client_email`
-   - `FIREBASE_PRIVATE_KEY` = `private_key` (biarkan `\n` apa adanya, jangan diubah jadi newline asli saat paste ke .env)
+   - `FIREBASE_PRIVATE_KEY_BASE64` = base64 seluruh `private_key` (disarankan untuk Vercel).
+   - `FIREBASE_PRIVATE_KEY` = `private_key` sebagai fallback.
 5. (Opsional tapi disarankan) Deploy `firestore.rules` yang sudah disediakan:
    ```bash
    npm install -g firebase-tools
@@ -94,12 +95,12 @@ Login di `/admin/login`.
 ## 5. Setup Upstream Reaction API
 
 ```
-UPSTREAM_REACT_URL=https://apiv2.reactionwa.online/api/v2/react
-UPSTREAM_REACT_KEY=<API key dari penyedia layanan reaction>
+UPSTREAM_REACT_URL=<URL endpoint reaction upstream>
+UPSTREAM_REFRESH_TOKEN=<refresh token upstream>
+UPSTREAM_TIMEOUT=30000
 ```
 
-Key ini **hanya** dipakai di server (`lib/upstream.js`), tidak pernah dikirim
-ke browser.
+Refresh token ini **hanya** dipakai di server (`lib/upstream.js`), tidak pernah dikirim ke browser.
 
 ---
 
