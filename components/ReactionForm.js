@@ -27,6 +27,7 @@ export default function ReactionForm() {
   const [phase, setPhase] = useState('idle'); // idle | validating | waiting | processing | success | failed
   const [message, setMessage] = useState('');
   const [queuePosition, setQueuePosition] = useState(null);
+  const [requestIdState, setRequestIdState] = useState('');
   const [toast, setToast] = useState(null);
   const pollRef = useRef(null);
   const pollStartedAtRef = useRef(0);
@@ -143,6 +144,7 @@ export default function ReactionForm() {
     setPhase('validating');
     setMessage('Memvalidasi...');
     const requestId = crypto.randomUUID();
+    setRequestIdState(requestId);
 
     try {
       const resp = await fetch('/api/react', {
@@ -174,6 +176,7 @@ export default function ReactionForm() {
 
   const busy = phase === 'validating' || phase === 'waiting' || phase === 'processing';
   const canSubmit = !busy;
+  const previewReactions = selected.length ? selected.join(' ') : '😀 😂 ❤️';
 
   return (
     <div className="card reaction-card">
@@ -195,6 +198,12 @@ export default function ReactionForm() {
 
         <label className="field-label" style={{ marginTop: 18 }}>Pilih Reaction (maks. {MAX_SELECTED})</label>
         <EmojiPicker emojis={EMOJIS} selected={selected} onToggle={toggleEmoji} disabled={!canSubmit} />
+
+        <div className="reaction-preview" aria-live="polite">
+          <span className="reaction-preview-label">Preview reaction</span>
+          <strong>{previewReactions}</strong>
+          <small>{selected.length ? `${selected.length} emoji dipilih · biaya ${coinCost} coin` : 'Pilih emoji untuk melihat preview.'}</small>
+        </div>
 
         <div className="custom-emoji-row">
           <input
@@ -252,6 +261,12 @@ export default function ReactionForm() {
         <div className={`status-box status-${phase}`}>
           {phase === 'waiting' && queuePosition && <div className="queue-position">Posisi antrean: #{queuePosition}</div>}
           <div className="status-message">{message}</div>
+          {requestIdState && (
+            <div className="request-id-box">
+              <span>Request ID</span>
+              <code>{requestIdState}</code>
+            </div>
+          )}
         </div>
       )}
     </div>
