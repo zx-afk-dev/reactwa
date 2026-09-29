@@ -5,8 +5,8 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
 
   const { requestId } = req.query;
-  if (!requestId || typeof requestId !== 'string') {
-    return sendError(res, ERROR_CODES.VALIDATION_ERROR, 'requestId wajib diisi.');
+  if (!requestId || typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{8,64}$/.test(requestId)) {
+    return sendError(res, ERROR_CODES.VALIDATION_ERROR, 'requestId tidak valid.');
   }
 
   try {
