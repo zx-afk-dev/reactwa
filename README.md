@@ -14,15 +14,7 @@ coin (Free), VIP, DEV, redeem code, antrean global, dan Admin Panel lengkap.
 - Semua akses Firestore lewat **Firebase Admin SDK di API routes** saja.
   Browser tidak pernah bicara langsung ke Firestore (lihat `firestore.rules`,
   yang menolak semua akses client langsung sebagai lapisan keamanan tambahan).
-- **Antrean global** (`lib/queue.js`) memakai dokumen lock (`queue/lock`)
-  dengan TTL (`QUEUE_LOCK_TTL`) yang diambil/lepas lewat Firestore transaction,
-  supaya aman meski Vercel menjalankan banyak instance function bersamaan.
-  Karena hosting serverless tidak punya worker proses yang hidup terus,
-  pemrosesan antrean dipicu secara oportunistik: langsung setelah request
-  masuk, dan lagi setiap kali browser melakukan polling status
-  (`/api/queue-status`). Untuk trafik tinggi, tambahkan Vercel Cron yang
-  memanggil sebuah endpoint pemroses antrean setiap menit sebagai jaring
-  pengaman (lihat bagian "Opsional: Cron" di bawah).
+- **Antrean global** (`lib/queue.js`) disimpan di Firestore (`queueTasks`) dengan dokumen lock (`queue/lock`). Request publik hanya memasukkan task ke antrean dan tidak menunggu upstream. Worker dipanggil oleh GitHub Actions melalui `/api/cron/queue`, sedangkan Vercel Cron dipakai khusus untuk cleanup data lama.
 - **Coin** disimpan per-identitas (hash IP untuk Free, atau `plan:keyId`
   untuk VIP/DEV) dan diubah lewat Firestore transaction (`lib/coin.js`),
   sehingga aman dari race condition saat banyak request bersamaan.
@@ -134,22 +126,30 @@ langsung dari tabel di Admin Panel.
 ## 7. Deploy ke Vercel
 
 1. Push project ini ke GitHub/GitLab/Bitbucket.
-2. Buka [vercel.com](https://vercel.com) → **New Project** → import repo ini.
-3. Di **Environment Variables**, masukkan seluruh isi `.env.example` dengan
-   nilai aslinya (termasuk `NEXT_PUBLIC_SITE_URL` = domain Vercel kamu).
-4. Deploy. Setelah selesai, buka `/admin/login` untuk login sebagai Owner.
+2. Import repository ke Vercel.
+3. Isi environment variables dari `.env.example` di Vercel.
+4. Pastikan `CRON_SECRET` juga tersedia di Vercel karena dipakai endpoint cron.
+5. Deploy. Setelah selesai, buka `/admin/login`.
 
-### Opsional: Vercel Cron sebagai jaring pengaman antrean
-Untuk trafik tinggi/sepi pengunjung, tambahkan `vercel.json`:
-```json
-{
-  "crons": [{ "path": "/api/admin/queue?process=1", "schedule": "*/1 * * * *" }]
-}
+### Worker queue
+
+Worker queue dijalankan melalui GitHub Actions pada `.github/workflows/queue-worker.yml`.
+Tambahkan repository secret GitHub Actions:
+
 ```
-lalu tambahkan pemrosesan otomatis di endpoint terkait (memanggil
-`tryProcessNext()` dari `lib/queue.js`). Vercel Cron minimal interval
-tergantung plan (Hobby: 1x/hari, Pro: per menit) — sesuaikan strategi dengan
-kebutuhan trafik nyata.
+CRON_SECRET=<nilai yang sama dengan CRON_SECRET di Vercel>
+```
+
+Workflow dapat dijalankan manual melalui **GitHub → Actions → Queue Worker → Run workflow** untuk pengujian.
+
+### Cleanup Firestore
+
+Vercel Cron memanggil `/api/cron/cleanup` setiap hari. Cleanup hanya menghapus:
+- `queueTasks` dengan status `success` yang lebih dari 7 hari.
+- `queueTasks` dengan status `failed` yang lebih dari 14 hari.
+- `logs` yang lebih dari 30 hari.
+
+Task `waiting` dan `processing` tidak disentuh oleh cleanup.
 
 ---
 
