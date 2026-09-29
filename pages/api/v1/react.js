@@ -16,7 +16,9 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = req.headers['x-api-key'];
-    if (!apiKey) return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Header x-api-key wajib diisi.');
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.length > 128) {
+      return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Header x-api-key tidak valid.');
+    }
 
     const key = await findDevKey(apiKey);
     const status = validateKeyStatus(key);
