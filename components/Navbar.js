@@ -11,14 +11,28 @@ const LINKS = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+
   return (
     <header className="navbar">
       <div className="navbar-inner">
-        <Link href="/" className="navbar-logo">⚡ ReactionWA</Link>
-        <button className="navbar-toggle" onClick={() => setOpen((v) => !v)} aria-label="Menu">☰</button>
-        <nav className={`navbar-links ${open ? 'open' : ''}`}>
+        <Link href="/" className="navbar-logo" aria-label="ReactionWA home">
+          ReactionWA
+        </Link>
+
+        <button
+          className="navbar-toggle"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? 'Tutup menu' : 'Buka menu'}
+          aria-expanded={open}
+        >
+          {open ? '×' : '☰'}
+        </button>
+
+        <nav className={`navbar-links ${open ? 'open' : ''}`} aria-label="Navigasi utama">
           {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>{l.label}</Link>
+            <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
+              {l.label}
+            </Link>
           ))}
         </nav>
       </div>
