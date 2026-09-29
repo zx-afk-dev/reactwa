@@ -193,3 +193,8 @@ firestore.rules     → security rules (menolak akses client langsung)
   bergantung pada polling browser (setiap 1.5 detik selama status masih
   `waiting`/`processing`) — ini sudah didesain sehingga pengalaman pengguna
   tetap terasa langsung dalam kondisi trafik normal.
+
+### Upstream reliability
+- `UPSTREAM_TIMEOUT` default 30 detik dan dibatasi 5–120 detik.
+- HTTP non-2xx dari upstream diklasifikasikan sebagai `UPSTREAM_HTTP_<status>`.
+- Response upstream yang ditulis ke log disanitasi; identifier/account/business fields tidak disimpan.
