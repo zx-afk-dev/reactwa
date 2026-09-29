@@ -8,7 +8,13 @@ export default withAdminAuth(async (req, res) => {
     const { q, plan, limit } = req.query;
     // Filtering in-memory (rather than a Firestore composite where+orderBy
     // query) keeps this working out of the box with zero manual index setup.
-    const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(Number(limit) || 300).get();
+    // Clamp the client-provided limit so an admin request cannot accidentally
+    // turn into an expensive unbounded Firestore read.
+    const requestedLimit = Number(limit);
+    const safeLimit = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(Math.floor(requestedLimit), 500))
+      : 300;
+    const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(safeLimit).get();
     let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     if (plan) items = items.filter((u) => u.plan === plan);
     if (q) {
