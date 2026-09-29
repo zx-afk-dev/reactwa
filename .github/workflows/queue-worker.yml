@@ -1,0 +1,40 @@
+name: Queue Worker
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: reaction-queue-worker
+  cancel-in-progress: true
+
+jobs:
+  process-queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+
+    steps:
+      - name: Process queue
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET GitHub Actions secret belum diatur."
+            exit 1
+          fi
+
+          for i in 1 2 3 4 5; do
+            echo "Queue pass $i/5"
+            curl --fail --silent --show-error --max-time 45 \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "Accept: application/json" \
+              -X POST \
+              "https://react.v1.zfile.web.id/api/cron/queue" || true
+
+            if [ "$i" -lt 5 ]; then
+              sleep 60
+            fi
+          done
