@@ -1,6 +1,7 @@
 import { sendError, sendSuccess, ERROR_CODES } from '../../lib/errors';
 import { getClientIpFromRequest, hashIp } from '../../lib/ip';
 import { redeemCode } from '../../lib/redeem';
+import { checkAndBumpKeyRateLimit } from '../../lib/keys';
 
 export const config = { api: { bodyParser: { sizeLimit: '2kb' } } };
 
@@ -15,6 +16,13 @@ export default async function handler(req, res) {
   try {
     const ip = getClientIpFromRequest(req);
     const identifier = hashIp(ip);
+
+    // Keep redeem-code guessing bounded without storing the raw visitor IP.
+    const rl = await checkAndBumpKeyRateLimit('redeemRateLimits', identifier, 10);
+    if (!rl.ok) {
+      return sendError(res, ERROR_CODES.RATE_LIMIT, 'Terlalu banyak percobaan redeem. Coba lagi sebentar.');
+    }
+
     const result = await redeemCode(code.trim().toUpperCase(), identifier);
 
     if (!result.ok) {
