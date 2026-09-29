@@ -1,5 +1,5 @@
 import { sendError, sendSuccess, ERROR_CODES } from '../../lib/errors';
-import { getTask, getQueuePosition, drainQueue, formatTaskResponse } from '../../lib/queue';
+import { getTask, getQueuePosition, formatTaskResponse } from '../../lib/queue';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
@@ -10,10 +10,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Piggyback queue processing on status polls, so tasks keep moving even
-    // without a dedicated background worker process.
-    await drainQueue(2);
-
     const task = await getTask(requestId);
     if (!task) return sendError(res, ERROR_CODES.NOT_FOUND, 'Request tidak ditemukan.');
 
