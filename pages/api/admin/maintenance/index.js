@@ -9,7 +9,9 @@ export default withAdminAuth(async (req, res) => {
   }
   if (req.method === 'PUT' || req.method === 'PATCH') {
     const { maintenance } = req.body || {};
-    if (!maintenance) return sendError(res, ERROR_CODES.VALIDATION_ERROR, 'Data maintenance wajib diisi.');
+    if (!maintenance || typeof maintenance !== 'object' || Array.isArray(maintenance)) {
+      return sendError(res, ERROR_CODES.VALIDATION_ERROR, 'Data maintenance tidak valid.');
+    }
     const settings = await updateSettings({ maintenance });
     return sendSuccess(res, { maintenance: settings.maintenance });
   }
