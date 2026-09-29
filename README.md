@@ -190,10 +190,7 @@ firestore.rules     → security rules (menolak akses client langsung)
   seluruh API — lihat `lib/errors.js`.
 - Reset coin harian dan penambahan coin/redeem semuanya atomic lewat
   Firestore transaction — lihat komentar di `lib/coin.js` dan `lib/redeem.js`.
-- Karena tidak ada worker persisten di serverless, "real-time"-nya antrean
-  bergantung pada polling browser (setiap 1.5 detik selama status masih
-  `waiting`/`processing`) — ini sudah didesain sehingga pengalaman pengguna
-  tetap terasa langsung dalam kondisi trafik normal.
+- Karena tidak ada worker persisten di serverless, antrean diproses oleh GitHub Actions melalui endpoint worker. Browser hanya melakukan polling status task setiap 4 detik selama status masih `waiting`/`processing`, dengan batas polling sekitar 10 menit per sesi.
 
 ### Upstream reliability
 - `UPSTREAM_TIMEOUT` default 30 detik dan dibatasi 5–120 detik.
