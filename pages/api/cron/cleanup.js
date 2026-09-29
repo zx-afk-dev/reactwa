@@ -21,7 +21,6 @@ function timestampMs(value) {
 async function deleteOldByStatus(status, cutoff) {
   const snap = await db.collection('queueTasks')
     .where('status', '==', status)
-    .orderBy('updatedAt', 'asc')
     .limit(RETENTION.batchSize)
     .get();
 
