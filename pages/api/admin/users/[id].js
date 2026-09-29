@@ -24,10 +24,17 @@ export default withAdminAuth(async (req, res) => {
       } else if (action === 'unsuspend') {
         await ref.set({ suspended: false, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       } else if (action === 'setPlan') {
+        if (!['FREE', 'VIP', 'DEV'].includes(value)) {
+          return sendError(res, ERROR_CODES.VALIDATION_ERROR, 'Plan tidak valid.');
+        }
         await ref.set({ plan: value, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       } else if (action === 'adjustCoin') {
-        const newCoin = await adjustCoin(id, Number(value) || 0);
-        await logEvent('user_coin_adjust', 'Admin adjusted user coin', { id, delta: value, admin: req.admin.username });
+        const delta = Number(value);
+        if (!Number.isFinite(delta) || !Number.isInteger(delta) || Math.abs(delta) > 1000000) {
+          return sendError(res, ERROR_CODES.VALIDATION_ERROR, 'Nilai coin tidak valid.');
+        }
+        const newCoin = await adjustCoin(id, delta);
+        await logEvent('user_coin_adjust', 'Admin adjusted user coin', { id, delta, admin: req.admin.username });
         return sendSuccess(res, { message: 'Coin diperbarui.', coin: newCoin });
       } else if (action === 'resetCoin') {
         const settings = await getSettings();
