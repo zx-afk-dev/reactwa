@@ -177,7 +177,7 @@ pages/            → routing (Pages Router)
 components/        → UI components
   admin/           → komponen khusus Admin Panel
 lib/                → semua logic inti (queue, coin, keys, redeem, stats, dst)
-styles/globals.css  → design system (mobile-first, dark theme)
+styles/globals.css  → design system (mobile-first, scrapbook/notebook theme)
 firestore.rules     → security rules (menolak akses client langsung)
 ```
 
