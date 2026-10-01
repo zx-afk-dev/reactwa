@@ -1,11 +1,10 @@
 import Layout from '../components/Layout';
 
 const FAQ_ITEMS = [
-  ['Apakah browser langsung menghubungi reaction service?', 'Tidak. Browser hanya berbicara dengan /api/react milik website ini. Pengiriman ke upstream dilakukan server-side oleh worker.'],
-  ['Kenapa request bisa menunggu?', 'Karena semua request melewati antrean global dan worker sengaja dibatasi agar upstream tidak menerima lonjakan besar sekaligus.'],
-  ['Apakah request yang sama bisa masuk berkali-kali?', 'Request identik yang datang dalam jendela deduplikasi akan ditolak sementara.'],
-  ['Apa yang terjadi jika upstream lambat atau error?', 'Worker memakai timeout dan retry terbatas. Setelah batas retry tercapai, job ditandai failed.'],
-  ['Apakah antrean bertahan saat Vercel mengganti instance?', 'Data antrean disimpan di Firebase Realtime Database, bukan memory instance serverless.'],
+  ['Apakah ada antrean global?', 'Tidak. Request diteruskan langsung ke reaction service setelah validasi server.'],
+  ['Apakah browser langsung mengakses reaction service?', 'Tidak. Browser tetap hanya mengakses /api/react milik ReactionWA. Server yang meneruskan request ke service reaction.'],
+  ['Kenapa request bisa gagal?', 'Jika reaction service sedang error, tidak tersedia, atau melewati batas waktu, ReactionWA akan mengembalikan error upstream.'],
+  ['Apakah perlu Firebase untuk mengirim reaction?', 'Tidak untuk sistem direct reaction. Pengiriman reaction tidak lagi bergantung pada Firebase Realtime Database queue.'],
 ];
 
 export default function FAQ() {
