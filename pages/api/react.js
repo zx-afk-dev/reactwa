@@ -40,6 +40,14 @@ export default async function handler(req, res) {
       });
     }
 
+    // Kick the worker BEFORE returning the response.
+    // Anything after return is unreachable, so waitUntil must be registered here.
+    waitUntil(
+      processNextReaction().catch((error) => {
+        console.error('[reaction-kick]', error);
+      })
+    );
+
     return res.status(202).json({
       success: true,
       code: 'QUEUED',
@@ -48,12 +56,6 @@ export default async function handler(req, res) {
       status: 'waiting',
       queue: { position: result.position },
     });
-
-    waitUntil(
-      processNextReaction().catch((error) => {
-        console.error('[reaction-kick]', error);
-      })
-    );
   } catch (error) {
     console.error('[reaction-proxy]', error);
     return res.status(503).json({
