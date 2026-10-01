@@ -53,12 +53,12 @@ export default function ReactionForm() {
     };
   }, []);
 
-  const isCustom = useMemo(
-    () => customEmoji.trim() && !DEFAULT_EMOJIS.includes(customEmoji.trim()),
-    [customEmoji]
+  const hasCustomSelected = useMemo(
+    () => emojis.some((emoji) => !DEFAULT_EMOJIS.includes(emoji)),
+    [emojis]
   );
 
-  const cost = isCustom ? 2 : 1;
+  const cost = hasCustomSelected ? 2 : 1;
   const canAddCustom = customEmoji.trim() && emojis.length < MAX_EMOJIS;
 
   function toggleEmoji(emoji) {
@@ -207,7 +207,7 @@ export default function ReactionForm() {
         </button>
       </div>
 
-      {isCustom && (
+      {hasCustomSelected && (
         <div className="custom-cost-note">
           ✦ Custom emoji memakai <b>2 coin</b> untuk pengguna Free.
         </div>
