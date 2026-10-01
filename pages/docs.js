@@ -1,6 +1,8 @@
 import Layout from '../components/Layout';
 
-const CURL = `curl -X POST "https://your-domain.com/api/react" \\  -H "Content-Type: application/json" \\  -d '{
+const CURL = `curl -X POST "https://your-domain.com/api/react" \\
+  -H "Content-Type: application/json" \\
+  -d '{
     "url": "https://whatsapp.com/channel/xxxxxxxx/123",
     "emojis": "🥳,👍"
   }'`;
@@ -10,12 +12,15 @@ export default function Docs() {
     <Layout title="Docs — ReactionWA">
       <section className="content-page">
         <div className="scribble">note / api</div>
-        <h1>How the queue works</h1>
+        <h1>Direct reaction API</h1>
 
         <article className="paper-card note-blue">
           <h3>Public endpoint</h3>
           <p className="muted"><code>POST /api/react</code></p>
-          <p>Website menerima request lalu memasukkannya ke antrean global. URL service upstream disimpan di server dan tidak dikirim ke browser.</p>
+          <p>
+            Request divalidasi oleh server ReactionWA lalu langsung diteruskan
+            ke reaction service. Tidak ada antrean global atau polling status.
+          </p>
         </article>
 
         <article className="paper-card">
@@ -31,23 +36,20 @@ export default function Docs() {
           <h3>Response</h3>
           <pre>{`{
   "success": true,
-  "code": "QUEUED",
-  "requestId": "uuid",
-  "status": "waiting",
-  "queue": { "position": 1 }
+  "code": "SENT",
+  "message": "Reaction berhasil dikirim.",
+  "data": {}
 }`}</pre>
-          <p>Gunakan <code>GET /api/reaction-status?id=REQUEST_ID</code> untuk melihat status.</p>
+          <p>Response berasal dari service reaction setelah request diproses.</p>
         </article>
 
         <article className="paper-card">
           <h3>Protection</h3>
           <ul>
-            <li>Burst limit dan per-minute limit berbasis IP.</li>
-            <li>Deduplikasi request yang sama.</li>
-            <li>Batas ukuran queue global.</li>
-            <li>Satu worker global pada satu waktu dengan Firebase Realtime Database lock.</li>
-            <li>Timeout upstream dan retry terbatas.</li>
-            <li>Request hanya boleh menuju format WhatsApp Channel yang valid.</li>
+            <li>Validasi URL WhatsApp Channel.</li>
+            <li>Batas 1 sampai 5 reaction unik.</li>
+            <li>Timeout upstream.</li>
+            <li>Service upstream tetap hanya dipanggil dari server.</li>
           </ul>
         </article>
 
@@ -58,8 +60,10 @@ export default function Docs() {
 
         <article className="paper-card">
           <h3>Environment</h3>
-          <p className="muted">Wajib: <code>FIREBASE_PROJECT_ID</code>, <code>FIREBASE_CLIENT_EMAIL</code>, <code>FIREBASE_PRIVATE_KEY_BASE64</code>, <code>FIREBASE_DATABASE_URL</code>, <code>CRON_SECRET</code>, dan <code>IP_HASH_SALT</code>.</p>
-          <p className="muted">Target upstream berada di sisi server melalui <code>REACTION_API_URL</code>; jangan membuatnya menjadi <code>NEXT_PUBLIC_*</code>.</p>
+          <p className="muted">
+            Gunakan <code>REACTION_API_URL</code> untuk menentukan endpoint
+            reaction service dan <code>UPSTREAM_TIMEOUT</code> untuk batas waktu.
+          </p>
         </article>
       </section>
     </Layout>
