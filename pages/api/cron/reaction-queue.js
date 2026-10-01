@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     const cleanup = await cleanupExpiredState(50);
     const results = [];
-    const passes = Math.min(5, Number(process.env.WORKER_BATCH_SIZE || 5));
+    const passes = Math.min(2, Number(process.env.WORKER_BATCH_SIZE || 2));
     for (let i = 0; i < passes; i += 1) {
       const next = await processNextReaction();
       results.push(next);
