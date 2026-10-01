@@ -58,6 +58,15 @@ export default function Docs() {
           <pre>{CURL}</pre>
         </article>
 
+        <article className="paper-card note-yellow">
+          <h3>Coin & paket</h3>
+          <p>
+            Paket Free menggunakan coin untuk request reaction. Reaction biasa
+            menggunakan 1 coin, sedangkan jika memilih custom emoji request
+            menggunakan 2 coin. Paket VIP dan DEV tidak menggunakan coin.
+          </p>
+        </article>
+
         <article className="paper-card">
           <h3>Environment</h3>
           <p className="muted">
