@@ -1,60 +1,25 @@
 import Layout from '../components/Layout';
 
 const ENTRIES = [
-  {
-    version: 'v1.9.0',
-    date: '29 September 2026',
-    title: 'Developer & Monitoring Update',
-    changes: [
-      'Developer Dashboard untuk memantau usage dan rate limit DEV API key.',
-      'Rate Limit Dashboard khusus admin dengan data pemakaian key secara live.',
-      'Error Alert opsional untuk mendeteksi lonjakan kegagalan upstream.',
-      'Reaction form mendapat preview emoji dan Request ID yang lebih jelas.',
-    ],
-  },
-  {
-    version: 'v1.8.0',
-    date: '29 September 2026',
-    title: 'Queue Control',
-    changes: [
-      'Admin dapat memproses satu task antrean secara manual.',
-      'Worker otomatis GitHub Actions tetap aktif.',
-      'Queue lock mencegah manual processor dan worker memproses task yang sama.',
-      'Dokumentasi queue dan polling diperbarui.',
-    ],
-  },
-  {
-    version: 'v1.7.0',
-    date: 'September 2026',
-    title: 'Stability & Security',
-    changes: [
-      'Validasi admin dan API diperketat.',
-      'Coin refund pada task gagal dibuat lebih aman.',
-      'Logging dan statistik dibuat lebih tahan terhadap data besar.',
-      'UI utama diperbarui ke gaya scrapbook/notebook.',
-    ],
-  },
+  ['2026-10-01', 'Global queue proxy', 'Request sekarang melewati proxy server-side dan antrean global sebelum diteruskan ke reaction service.'],
+  ['2026-10-01', 'Anti-spam layer', 'Ditambahkan burst limit, per-minute limit, deduplikasi, queue cap, worker lock, timeout, dan retry terbatas.'],
+  ['2026-10-01', 'Notebook rebuild', 'UI utama diarahkan ke gaya digital scrapbook / notebook.'],
 ];
 
 export default function Changelog() {
   return (
-    <Layout>
-      <section className="hero">
+    <Layout title="Changelog — ReactionWA">
+      <section className="content-page">
+        <div className="scribble">archive / changes</div>
         <h1>Changelog</h1>
-        <p>Catatan perubahan ReactionWA dari waktu ke waktu.</p>
-      </section>
-
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        {ENTRIES.map((entry, index) => (
-          <article className="card" key={entry.version} style={{ marginBottom: 20, transform: `rotate(${index % 2 ? '.25' : '-.25'}deg)` }}>
-            <div className="note-kicker">{entry.version} · {entry.date}</div>
-            <h2 style={{ marginTop: 6 }}>{entry.title}</h2>
-            <ul style={{ lineHeight: 1.8, color: 'var(--ink-soft)' }}>
-              {entry.changes.map((change) => <li key={change}>{change}</li>)}
-            </ul>
+        {ENTRIES.map(([date, title, text], index) => (
+          <article className={`paper-card ${index % 2 ? 'note-yellow tilt-right' : 'note-blue tilt-left'}`} key={title}>
+            <span className="note-number">{date}</span>
+            <h3>{title}</h3>
+            <p className="muted">{text}</p>
           </article>
         ))}
-      </div>
+      </section>
     </Layout>
   );
 }
