@@ -1,54 +1,96 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import StatCard from '../../components/admin/StatCard';
 
-export default function AdminDashboard() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/admin/dashboard').then((r) => r.json()).then((d) => { if (d.success) setData(d); });
-  }, []);
-
+function Metric({ label, value, note, tone = '' }) {
   return (
-    <AdminLayout title="Dashboard">
-      {!data ? <p>Memuat...</p> : (
-        <>
-          <div className="admin-stat-grid">
-            <StatCard label="Total User" value={data.total.users || 0} />
-            <StatCard label="User Free" value={data.total.users_free || 0} />
-            <StatCard label="User VIP" value={data.total.users_vip || 0} />
-            <StatCard label="User Dev" value={data.total.users_dev || 0} />
-            <StatCard label="Total Reaction" value={data.total.reaction || 0} />
-            <StatCard label="Success" value={data.total.success || 0} />
-            <StatCard label="Failed" value={data.total.failed || 0} />
-            <StatCard label="Redeem" value={data.total.redeem || 0} />
-          </div>
-
-          <div className="card">
-            <h3>Reaction 14 Hari Terakhir</h3>
-            <SimpleBarChart series={data.daily} />
-          </div>
-
-          {data.maintenance?.enabled && (
-            <div className="admin-alert">Maintenance sedang aktif: {data.maintenance.title}</div>
-          )}
-        </>
-      )}
-    </AdminLayout>
+    <div className={`admin-metric ${tone}`}>
+      <span>{label}</span>
+      <strong>{Number(value || 0).toLocaleString('id-ID')}</strong>
+      <small>{note}</small>
+    </div>
   );
 }
 
-function SimpleBarChart({ series }) {
-  if (!series || series.length === 0) return <p className="empty-cell">Belum ada data.</p>;
-  const max = Math.max(...series.map((s) => s.reaction || 0), 1);
+export default function AdminDashboard() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  async function load() {
+    try {
+      const r = await fetch('/api/admin/dashboard');
+      const d = await r.json();
+      if (!r.ok || !d.success) throw new Error(d.message || 'Gagal memuat dashboard');
+      setData(d);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  if (!data && !error) {
+    return <AdminLayout title="Overview"><div className="admin-skeleton">Membuka catatan statistik...</div></AdminLayout>;
+  }
+
+  if (error) {
+    return <AdminLayout title="Overview"><div className="admin-error">{error}<button onClick={load}>Coba lagi</button></div></AdminLayout>;
+  }
+
+  const total = data.total || {};
+  const daily = data.daily || [];
+  const max = Math.max(...daily.map((x) => Number(x.reaction || 0)), 1);
+
   return (
-    <div className="bar-chart">
-      {series.map((s) => (
-        <div className="bar-col" key={s.key}>
-          <div className="bar" style={{ height: `${Math.max(4, (s.reaction || 0) / max * 100)}%` }} title={`${s.key}: ${s.reaction || 0}`} />
-          <span className="bar-label">{s.key?.slice(5)}</span>
+    <AdminLayout title="Overview">
+      <section className="admin-welcome">
+        <div>
+          <div className="admin-scribble">today's control notes</div>
+          <h2>Selamat datang di ruang admin.</h2>
+          <p>Ringkasan layanan, pengguna, dan aktivitas reaction dalam satu tempat.</p>
         </div>
-      ))}
-    </div>
+        <div className="admin-stamp">LIVE<br /><b>DIRECT FLOW</b></div>
+      </section>
+
+      {data.maintenance?.enabled && (
+        <div className="admin-maintenance">⚠ Maintenance aktif — {data.maintenance.title}</div>
+      )}
+
+      <div className="admin-metric-grid">
+        <Metric label="TOTAL USERS" value={total.users} note="semua profil" tone="blue" />
+        <Metric label="FREE" value={total.users_free} note="plan aktif" />
+        <Metric label="VIP" value={total.users_vip} note="plan aktif" tone="yellow" />
+        <Metric label="DEV" value={total.users_dev} note="plan aktif" tone="red" />
+        <Metric label="REACTIONS" value={total.reaction} note="emoji terkirim" tone="blue" />
+        <Metric label="SUCCESS" value={total.success} note="request berhasil" />
+        <Metric label="FAILED" value={total.failed} note="request gagal" tone="red" />
+        <Metric label="REDEEM" value={total.redeem} note="kode digunakan" tone="yellow" />
+      </div>
+
+      <section className="admin-panel paper-grid">
+        <div className="admin-panel-head">
+          <div><span className="admin-scribble">activity / 14 days</span><h3>Reaction activity</h3></div>
+          <button className="admin-refresh" onClick={load}>↻ Refresh</button>
+        </div>
+        <div className="admin-chart">
+          {daily.map((item) => {
+            const height = Math.max(5, (Number(item.reaction || 0) / max) * 100);
+            return (
+              <div className="admin-bar-wrap" key={item.key}>
+                <div className="admin-bar-value">{Number(item.reaction || 0).toLocaleString('id-ID')}</div>
+                <div className="admin-bar" style={{ height: `${height}%` }} />
+                <small>{item.key?.slice(5)}</small>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="admin-note-row">
+        <div className="admin-note blue">Server validates first.<br /><b>Then direct upstream.</b></div>
+        <div className="admin-note yellow">Coin is billed by plan.<br /><b>Custom emoji = 2 coins.</b></div>
+        <div className="admin-note red">No global queue.<br /><b>No polling worker.</b></div>
+      </div>
+    </AdminLayout>
   );
 }
