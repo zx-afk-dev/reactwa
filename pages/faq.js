@@ -1,6 +1,6 @@
 import Layout from '../components/Layout';
 
-const FAQ = [
+const FAQ_ITEMS = [
   ['Apakah browser langsung menghubungi reaction service?', 'Tidak. Browser hanya berbicara dengan /api/react milik website ini. Pengiriman ke upstream dilakukan server-side oleh worker.'],
   ['Kenapa request bisa menunggu?', 'Karena semua request melewati antrean global dan worker sengaja dibatasi agar upstream tidak menerima lonjakan besar sekaligus.'],
   ['Apakah request yang sama bisa masuk berkali-kali?', 'Request identik yang datang dalam jendela deduplikasi akan ditolak sementara.'],
