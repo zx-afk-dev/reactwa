@@ -14,7 +14,7 @@ export default function FAQ() {
       <section className="content-page">
         <div className="scribble">frequently asked notes</div>
         <h1>FAQ</h1>
-        {FAQ.map(([question, answer], index) => (
+        {FAQ_ITEMS.map(([question, answer], index) => (
           <article className={`paper-card ${index % 2 ? 'note-yellow tilt-right' : ''}`} key={question}>
             <h3>{question}</h3>
             <p className="muted">{answer}</p>
