@@ -45,7 +45,7 @@ export default function Docs() {
             <li>Burst limit dan per-minute limit berbasis IP.</li>
             <li>Deduplikasi request yang sama.</li>
             <li>Batas ukuran queue global.</li>
-            <li>Satu worker global pada satu waktu dengan Redis lock.</li>
+            <li>Satu worker global pada satu waktu dengan Firebase Realtime Database lock.</li>
             <li>Timeout upstream dan retry terbatas.</li>
             <li>Request hanya boleh menuju format WhatsApp Channel yang valid.</li>
           </ul>
@@ -58,8 +58,8 @@ export default function Docs() {
 
         <article className="paper-card">
           <h3>Environment</h3>
-          <p className="muted">Wajib: <code>UPSTASH_REDIS_REST_URL</code>, <code>UPSTASH_REDIS_REST_TOKEN</code>, <code>CRON_SECRET</code>, dan <code>IP_HASH_SALT</code>.</p>
-          <p className="muted">Target upstream default berada di sisi server melalui <code>REACTION_API_URL</code>; jangan membuatnya menjadi <code>NEXT_PUBLIC_*</code>.</p>
+          <p className="muted">Wajib: <code>FIREBASE_PROJECT_ID</code>, <code>FIREBASE_CLIENT_EMAIL</code>, <code>FIREBASE_PRIVATE_KEY_BASE64</code>, <code>FIREBASE_DATABASE_URL</code>, <code>CRON_SECRET</code>, dan <code>IP_HASH_SALT</code>.</p>
+          <p className="muted">Target upstream berada di sisi server melalui <code>REACTION_API_URL</code>; jangan membuatnya menjadi <code>NEXT_PUBLIC_*</code>.</p>
         </article>
       </section>
     </Layout>
