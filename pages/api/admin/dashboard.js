@@ -6,7 +6,7 @@ import { getSettings } from '../../../lib/settings';
 export default withAdminAuth(async (req, res) => {
   if (req.method !== 'GET') return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
   try {
-    const [total, daily, settings, waitingSnap] = await Promise.all([
+    const [total, daily, settings] = await Promise.all([
       getTotalStats(),
       getRecentSeries('daily', 14),
       getSettings(),
