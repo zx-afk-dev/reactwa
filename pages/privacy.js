@@ -2,20 +2,23 @@ import Layout from '../components/Layout';
 
 export default function Privacy() {
   return (
-    <Layout title="Kebijakan Privasi">
-      <section className="page-header">
-        <h1>Kebijakan Privasi</h1>
+    <Layout title="Privacy — ReactionWA">
+      <section className="content-page">
+        <div className="scribble">archive / privacy</div>
+        <h1>Privacy</h1>
+        <article className="paper-card">
+          <h3>Data yang diproses</h3>
+          <p className="muted">Request queue menyimpan URL target, reaction, status job, waktu pembuatan, jumlah percobaan, dan hash IP untuk kebutuhan rate-limit/operasional. IP mentah tidak disimpan sebagai bagian dari job.</p>
+        </article>
+        <article className="paper-card note-blue">
+          <h3>Keamanan</h3>
+          <p className="muted">Target upstream disimpan sebagai konfigurasi server. Token Redis dan secret cron hanya berada di environment server dan tidak dikirim ke browser.</p>
+        </article>
+        <article className="paper-card note-yellow">
+          <h3>Retensi</h3>
+          <p className="muted">Job queue otomatis kedaluwarsa sesuai <code>QUEUE_JOB_TTL</code>. Nilai default adalah 24 jam.</p>
+        </article>
       </section>
-      <div className="card legal-card">
-        <p>Kami menghargai privasi pengguna. Berikut ringkasan bagaimana data diperlakukan:</p>
-        <ol>
-          <li>Kami tidak menyimpan alamat IP mentah kamu untuk keperluan permanen. Identitas kuota disimpan dalam bentuk hash, bukan IP asli.</li>
-          <li>Data yang disimpan terbatas pada yang diperlukan untuk operasional layanan, seperti status kuota, riwayat penggunaan, dan statistik agregat.</li>
-          <li>Kami tidak membagikan data pengguna kepada pihak ketiga untuk tujuan komersial.</li>
-          <li>Statistik publik yang ditampilkan di halaman Status bersifat agregat dan tidak memuat data pribadi individu.</li>
-          <li>Untuk pertanyaan terkait privasi, silakan hubungi Owner melalui kontak yang tersedia di halaman Pricing.</li>
-        </ol>
-      </div>
     </Layout>
   );
 }
