@@ -1,8 +1,8 @@
 import Layout from '../components/Layout';
 
 const ENTRIES = [
-  ['2026-10-01', 'Global queue proxy', 'Request sekarang melewati proxy server-side dan antrean global sebelum diteruskan ke reaction service.'],
-  ['2026-10-01', 'Anti-spam layer', 'Ditambahkan burst limit, per-minute limit, deduplikasi, queue cap, worker lock, timeout, dan retry terbatas.'],
+  ['2026-10-01', 'Direct reaction flow', 'Request sekarang divalidasi di server lalu langsung diteruskan ke reaction service tanpa global queue atau browser polling.'],
+  ['2026-10-01', 'Simplified architecture', 'Sistem queue global, worker cron, reaction status endpoint, dan dependency Firebase untuk alur pengiriman reaction dihapus.'],
   ['2026-10-01', 'Notebook rebuild', 'UI utama diarahkan ke gaya digital scrapbook / notebook.'],
 ];
 
