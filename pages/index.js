@@ -1,5 +1,6 @@
 import Layout from '../components/Layout';
 import ReactionForm from '../components/ReactionForm';
+import GlobalStats from '../components/GlobalStats';
 
 export default function Home() {
   return (
@@ -43,6 +44,8 @@ export default function Home() {
           </article>
         </aside>
       </section>
+
+      <GlobalStats />
 
       <section className="tiny-archive">
         <span className="archive-line" />
