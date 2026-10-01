@@ -8,8 +8,11 @@ export default function Home() {
         <div className="hero-copy">
           <div className="scribble">digital scrapbook / 01</div>
           <h1>React like you<br /><span>left a note.</span></h1>
-          <p className="hero-text">A tiny handmade corner for sending reactions to WhatsApp Channel posts. Request masuk ke antrean global sebelum diproses.</p>
-          <div className="stamp">GLOBAL<br /><b>QUEUE</b></div>
+          <p className="hero-text">
+            A tiny handmade corner for sending reactions to WhatsApp Channel posts.
+            Request divalidasi lalu langsung dikirim ke reaction service.
+          </p>
+          <div className="stamp">DIRECT<br /><b>SEND</b></div>
         </div>
         <div className="hero-doodle" aria-hidden="true">↗<span>pick a post<br />& leave a mark</span></div>
       </section>
@@ -20,19 +23,22 @@ export default function Home() {
           <article className="paper-card note-blue tilt-left">
             <span className="pin pin-blue" aria-hidden="true" />
             <span className="note-number">02</span>
-            <h3>One request at a time</h3>
+            <h3>Simple, direct flow</h3>
             <ol>
               <li>Request masuk ke server kita.</li>
-              <li>Server menyaring spam dan duplikat.</li>
-              <li>Request masuk antrean global.</li>
-              <li>Worker mengirimnya ke service reaction.</li>
+              <li>Server memvalidasi URL dan reaction.</li>
+              <li>Server meneruskan request ke reaction service.</li>
+              <li>Response dikembalikan langsung.</li>
             </ol>
           </article>
 
           <article className="paper-card note-yellow tilt-right">
             <span className="tape tape-red" aria-hidden="true" />
-            <h3>Built to protect the upstream</h3>
-            <p>Browser tidak memanggil service reaction secara langsung. Ada rate limit, deduplikasi, batas ukuran antrean, lock worker, timeout, dan retry terbatas.</p>
+            <h3>Less machinery</h3>
+            <p>
+              Tidak ada antrean global, worker, polling status, atau Firebase
+              Realtime Database yang dibutuhkan untuk mengirim reaction.
+            </p>
             <span className="hand-sign">— archive keeper</span>
           </article>
         </aside>
@@ -40,7 +46,7 @@ export default function Home() {
 
       <section className="tiny-archive">
         <span className="archive-line" />
-        <div><b>ARCHIVE NOTE</b><p>Paper outside. Queue control inside.</p></div>
+        <div><b>ARCHIVE NOTE</b><p>Paper outside. Direct send inside.</p></div>
         <span className="archive-line" />
       </section>
     </Layout>
