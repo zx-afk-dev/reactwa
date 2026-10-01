@@ -21,7 +21,6 @@ export default function AdminDashboard() {
             <StatCard label="Total Reaction" value={data.total.reaction || 0} />
             <StatCard label="Success" value={data.total.success || 0} />
             <StatCard label="Failed" value={data.total.failed || 0} />
-            <StatCard label="Queue Waiting" value={data.queueWaiting || 0} />
             <StatCard label="Redeem" value={data.total.redeem || 0} />
           </div>
 
