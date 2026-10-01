@@ -1,4 +1,5 @@
-import { checkAbuseLimit, enqueueReaction, getClientIp, validateReactionInput } from '../../lib/reactionQueue';
+import { waitUntil } from '@vercel/functions';
+import { checkAbuseLimit, enqueueReaction, getClientIp, processNextReaction, validateReactionInput } from '../../lib/reactionQueue';
 
 export const config = {
   api: {
@@ -47,6 +48,12 @@ export default async function handler(req, res) {
       status: 'waiting',
       queue: { position: result.position },
     });
+
+    waitUntil(
+      processNextReaction().catch((error) => {
+        console.error('[reaction-kick]', error);
+      })
+    );
   } catch (error) {
     console.error('[reaction-proxy]', error);
     return res.status(503).json({
