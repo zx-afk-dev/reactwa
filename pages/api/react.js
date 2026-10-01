@@ -90,6 +90,8 @@ export default async function handler(req, res) {
   const ip = clientIp || getClientIpFromRequest(req);
   const identifier = hashIp(ip);
 
+  let currentPlan = 'FREE';
+
   try {
     const settings = await getSettings();
 
@@ -105,6 +107,7 @@ export default async function handler(req, res) {
     const before = await userRef.get();
     const user = await getOrCreateUser(identifier);
     const plan = user.plan || 'FREE';
+    currentPlan = plan;
 
     if (!before.exists) {
       await recordNewUser(plan).catch((err) => console.error('new user stat', err));
@@ -149,7 +152,7 @@ export default async function handler(req, res) {
 
     if (!response.ok || data?.success === false) {
       if (spent) await refundCoin(identifier, spent).catch(() => {});
-      await recordStat({ plan, success: false }).catch(() => {});
+      await recordStat({ plan, success: false, reactionCount: reactionCheck.list.length }).catch(() => {});
 
       return res.status(response.status >= 400 ? response.status : 502).json({
         success: false,
@@ -159,7 +162,7 @@ export default async function handler(req, res) {
       });
     }
 
-    await recordStat({ plan, success: true }).catch((err) => {
+    await recordStat({ plan, success: true, reactionCount: reactionCheck.list.length }).catch((err) => {
       console.error('reaction stat error', err);
     });
 
@@ -181,8 +184,9 @@ export default async function handler(req, res) {
     const timeout = error?.name === 'AbortError';
 
     await recordStat({
-      plan: 'FREE',
+      plan: currentPlan,
       success: false,
+      reactionCount: reactionCheck.list.length,
     }).catch(() => {});
 
     console.error('[reaction-proxy]', {
