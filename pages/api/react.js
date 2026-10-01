@@ -1,3 +1,10 @@
+import { validateReactionEmojis, validateWhatsAppChannelUrl } from '../../lib/security';
+import { getClientIpFromRequest, hashIp } from '../../lib/ip';
+import { getOrCreateUser, spendCoin, refundCoin } from '../../lib/coin';
+import { getSettings } from '../../lib/settings';
+import { recordNewUser, recordStat } from '../../lib/stats';
+import { db } from '../../lib/firebaseAdmin';
+
 const UPSTREAM_URL = process.env.REACTION_API_URL || 'https://react.zfile.web.id/api/send-reaction';
 
 export const config = {
@@ -6,63 +13,13 @@ export const config = {
   },
 };
 
-function normalizeUrl(value) {
-  return value.trim().replace(/#.*$/, '');
-}
+function parseInput(body) {
+  const url = typeof body?.url === 'string' ? body.url.trim() : '';
+  const reaction = Array.isArray(body?.emojis)
+    ? body.emojis
+    : String(body?.emojis || '').split(',').map((x) => x.trim()).filter(Boolean);
 
-function parseEmojis(value) {
-  if (Array.isArray(value)) {
-    return value.map(String).map((x) => x.trim()).filter(Boolean);
-  }
-
-  return String(value || '')
-    .split(',')
-    .map((x) => x.trim())
-    .filter(Boolean);
-}
-
-function validateInput(body) {
-  const url = typeof body?.url === 'string' ? normalizeUrl(body.url) : '';
-  const emojis = parseEmojis(body?.emojis);
-
-  if (!/^https?:\/\/whatsapp\.com\/channel\/[^\s/]+\/\d+(?:\?.*)?$/i.test(url)) {
-    return {
-      ok: false,
-      status: 400,
-      code: 'INVALID_URL',
-      message: 'URL WhatsApp Channel tidak valid.',
-    };
-  }
-
-  if (emojis.length < 1 || emojis.length > 5) {
-    return {
-      ok: false,
-      status: 400,
-      code: 'INVALID_REACTION',
-      message: 'Pilih 1 sampai 5 reaction.',
-    };
-  }
-
-  const unique = [...new Set(emojis)];
-  if (unique.length !== emojis.length) {
-    return {
-      ok: false,
-      status: 400,
-      code: 'DUPLICATE_REACTION',
-      message: 'Reaction tidak boleh duplikat.',
-    };
-  }
-
-  if (unique.some((emoji) => emoji.length > 12)) {
-    return {
-      ok: false,
-      status: 400,
-      code: 'INVALID_REACTION',
-      message: 'Reaction terlalu panjang.',
-    };
-  }
-
-  return { ok: true, url, emojis: unique };
+  return { url, reaction };
 }
 
 async function sendUpstream(url, emojis) {
@@ -77,7 +34,7 @@ async function sendUpstream(url, emojis) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'ReactionWA-Proxy/2.0',
+        'User-Agent': 'ReactionWA-Proxy/3.0',
       },
       body: JSON.stringify({
         url,
@@ -107,19 +64,93 @@ export default async function handler(req, res) {
     });
   }
 
-  const input = validateInput(req.body);
-  if (!input.ok) {
-    return res.status(input.status).json({
+  const { url, reaction } = parseInput(req.body);
+  const urlCheck = validateWhatsAppChannelUrl(url);
+  const reactionCheck = validateReactionEmojis(reaction);
+
+  if (!urlCheck.valid) {
+    return res.status(400).json({
       success: false,
-      code: input.code,
-      message: input.message,
+      code: 'INVALID_URL',
+      message: 'URL postingan Saluran WhatsApp tidak valid.',
     });
   }
 
+  if (!reactionCheck.valid) {
+    return res.status(400).json({
+      success: false,
+      code: 'INVALID_REACTION',
+      message: 'Pilih 1 sampai 3 emoji reaction yang valid.',
+    });
+  }
+
+  // IP is fetched directly by the browser from ipify. It is only used here
+  // as a visitor identifier; the raw IP is never stored in Firestore.
+  const clientIp = typeof req.body?.visitorIp === 'string' ? req.body.visitorIp.trim() : '';
+  const ip = clientIp || getClientIpFromRequest(req);
+  const identifier = hashIp(ip);
+
   try {
-    const { response, data } = await sendUpstream(input.url, input.emojis);
+    const settings = await getSettings();
+
+    if (settings.maintenance?.enabled) {
+      return res.status(503).json({
+        success: false,
+        code: 'MAINTENANCE',
+        message: settings.maintenance.description || 'Layanan sedang dalam pemeliharaan.',
+      });
+    }
+
+    const userRef = db.collection('users').doc(identifier);
+    const before = await userRef.get();
+    const user = await getOrCreateUser(identifier);
+    const plan = user.plan || 'FREE';
+
+    if (!before.exists) {
+      await recordNewUser(plan).catch((err) => console.error('new user stat', err));
+    }
+
+    if (user.suspended) {
+      return res.status(403).json({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Akun/identitas ini sedang ditangguhkan.',
+      });
+    }
+
+    const coinCost = reactionCheck.hasCustom ? 2 : 1;
+    let spent = 0;
+
+    if (plan === 'FREE') {
+      const spend = await spendCoin(identifier, coinCost);
+
+      if (spend.suspended) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Akun/identitas ini sedang ditangguhkan.',
+        });
+      }
+
+      if (!spend.ok) {
+        return res.status(402).json({
+          success: false,
+          code: 'NO_COIN',
+          message: `Coin tidak cukup. Dibutuhkan ${coinCost} coin untuk request ini.`,
+          coin: Number(spend.coin || 0),
+          cost: coinCost,
+        });
+      }
+
+      spent = coinCost;
+    }
+
+    const { response, data } = await sendUpstream(urlCheck.url, reactionCheck.list);
 
     if (!response.ok || data?.success === false) {
+      if (spent) await refundCoin(identifier, spent).catch(() => {});
+      await recordStat({ plan, success: false }).catch(() => {});
+
       return res.status(response.status >= 400 ? response.status : 502).json({
         success: false,
         code: 'UPSTREAM_ERROR',
@@ -128,14 +159,31 @@ export default async function handler(req, res) {
       });
     }
 
+    await recordStat({ plan, success: true }).catch((err) => {
+      console.error('reaction stat error', err);
+    });
+
+    const remainingCoin = plan === 'FREE'
+      ? Number((await userRef.get()).data()?.coin || 0)
+      : Number(user.coin || 0);
+
     return res.status(200).json({
       success: true,
       code: 'SENT',
       message: data?.message || 'Reaction berhasil dikirim.',
+      plan,
+      coin: remainingCoin,
+      cost: spent,
+      customEmoji: reactionCheck.hasCustom,
       data,
     });
   } catch (error) {
     const timeout = error?.name === 'AbortError';
+
+    await recordStat({
+      plan: 'FREE',
+      success: false,
+    }).catch(() => {});
 
     console.error('[reaction-proxy]', {
       name: error?.name,
@@ -143,7 +191,7 @@ export default async function handler(req, res) {
       timeout,
     });
 
-    return res.status(504).json({
+    return res.status(timeout ? 504 : 503).json({
       success: false,
       code: timeout ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_UNAVAILABLE',
       message: timeout
