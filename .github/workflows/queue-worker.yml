@@ -1,4 +1,4 @@
-name: Queue Worker
+name: Reaction Global Queue Worker
 
 on:
   schedule:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: reaction-queue-worker
-  cancel-in-progress: true
+  group: reaction-global-queue-worker
+  cancel-in-progress: false
 
 jobs:
   process-queue:
@@ -15,27 +15,21 @@ jobs:
     timeout-minutes: 6
 
     steps:
-      - name: Process queue
+      - name: Process global queue
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ secrets.SITE_URL }}
         run: |
           set -e
 
-          if [ -z "$CRON_SECRET" ]; then
-            echo "CRON_SECRET GitHub Actions secret belum diatur."
+          if [ -z "$CRON_SECRET" ] || [ -z "$SITE_URL" ]; then
+            echo "CRON_SECRET dan SITE_URL wajib diatur di GitHub Actions Secrets."
             exit 1
           fi
 
           for i in 1 2 3 4 5; do
             echo "Queue pass $i/5"
-            response="$(curl --fail --silent --show-error --max-time 45 \
-              -H "Authorization: Bearer $CRON_SECRET" \
-              -H "Accept: application/json" \
-              -X POST \
-              "https://react.v1.zfile.web.id/api/cron/queue")"
+            response="$(curl --fail --silent --show-error --max-time 45               -H "Authorization: Bearer $CRON_SECRET"               -H "Accept: application/json"               -X POST               "$SITE_URL/api/cron/reaction-queue")"
             echo "Queue response: $response"
-
-            if [ "$i" -lt 5 ]; then
-              sleep 60
-            fi
+            sleep 5
           done
