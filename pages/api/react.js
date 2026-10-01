@@ -1,5 +1,4 @@
-import { waitUntil } from '@vercel/functions';
-import { checkAbuseLimit, enqueueReaction, getClientIp, processNextReaction, validateReactionInput } from '../../lib/reactionQueue';
+const UPSTREAM_URL = process.env.REACTION_API_URL || 'https://react.zfile.web.id/api/send-reaction';
 
 export const config = {
   api: {
@@ -7,61 +6,149 @@ export const config = {
   },
 };
 
+function normalizeUrl(value) {
+  return value.trim().replace(/#.*$/, '');
+}
+
+function parseEmojis(value) {
+  if (Array.isArray(value)) {
+    return value.map(String).map((x) => x.trim()).filter(Boolean);
+  }
+
+  return String(value || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function validateInput(body) {
+  const url = typeof body?.url === 'string' ? normalizeUrl(body.url) : '';
+  const emojis = parseEmojis(body?.emojis);
+
+  if (!/^https?:\/\/whatsapp\.com\/channel\/[^\s/]+\/\d+(?:\?.*)?$/i.test(url)) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'INVALID_URL',
+      message: 'URL WhatsApp Channel tidak valid.',
+    };
+  }
+
+  if (emojis.length < 1 || emojis.length > 5) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'INVALID_REACTION',
+      message: 'Pilih 1 sampai 5 reaction.',
+    };
+  }
+
+  const unique = [...new Set(emojis)];
+  if (unique.length !== emojis.length) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'DUPLICATE_REACTION',
+      message: 'Reaction tidak boleh duplikat.',
+    };
+  }
+
+  if (unique.some((emoji) => emoji.length > 12)) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'INVALID_REACTION',
+      message: 'Reaction terlalu panjang.',
+    };
+  }
+
+  return { ok: true, url, emojis: unique };
+}
+
+async function sendUpstream(url, emojis) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    Number(process.env.UPSTREAM_TIMEOUT || 10000)
+  );
+
+  try {
+    const response = await fetch(UPSTREAM_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'ReactionWA-Proxy/2.0',
+      },
+      body: JSON.stringify({
+        url,
+        emojis: emojis.join(','),
+      }),
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => ({
+      success: false,
+      message: 'Response upstream tidak valid.',
+    }));
+
+    return { response, data };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ success: false, code: 'METHOD_NOT_ALLOWED', message: 'Method not allowed.' });
+    return res.status(405).json({
+      success: false,
+      code: 'METHOD_NOT_ALLOWED',
+      message: 'Method not allowed.',
+    });
   }
 
-  const input = validateReactionInput(req.body);
+  const input = validateInput(req.body);
   if (!input.ok) {
-    return res.status(input.status).json({ success: false, code: input.code, message: input.message });
+    return res.status(input.status).json({
+      success: false,
+      code: input.code,
+      message: input.message,
+    });
   }
 
   try {
-    const ip = getClientIp(req);
-    const limit = await checkAbuseLimit(ip);
+    const { response, data } = await sendUpstream(input.url, input.emojis);
 
-    if (!limit.allowed) {
-      res.setHeader('Retry-After', String(limit.retryAfter));
-      return res.status(429).json({
+    if (!response.ok || data?.success === false) {
+      return res.status(response.status >= 400 ? response.status : 502).json({
         success: false,
-        code: 'RATE_LIMIT',
-        message: 'Terlalu banyak request. Tunggu sebentar sebelum mencoba lagi.',
+        code: 'UPSTREAM_ERROR',
+        message: data?.message || 'Reaction service gagal memproses request.',
+        response: data,
       });
     }
 
-    const result = await enqueueReaction({ url: input.url, emojis: input.emojis, ip });
-    if (!result.ok) {
-      return res.status(result.status).json({
-        success: false,
-        code: result.code,
-        message: result.message,
-      });
-    }
-
-    // Kick the worker BEFORE returning the response.
-    // Anything after return is unreachable, so waitUntil must be registered here.
-    waitUntil(
-      processNextReaction().catch((error) => {
-        console.error('[reaction-kick]', error);
-      })
-    );
-
-    return res.status(202).json({
+    return res.status(200).json({
       success: true,
-      code: 'QUEUED',
-      message: 'Request masuk ke antrean global.',
-      requestId: result.job.id,
-      status: 'waiting',
-      queue: { position: result.position },
+      code: 'SENT',
+      message: data?.message || 'Reaction berhasil dikirim.',
+      data,
     });
   } catch (error) {
-    console.error('[reaction-proxy]', error);
-    return res.status(503).json({
+    const timeout = error?.name === 'AbortError';
+
+    console.error('[reaction-proxy]', {
+      name: error?.name,
+      message: error?.message,
+      timeout,
+    });
+
+    return res.status(504).json({
       success: false,
-      code: 'QUEUE_ERROR',
-      message: 'Antrean Firebase sedang tidak tersedia.',
+      code: timeout ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_UNAVAILABLE',
+      message: timeout
+        ? 'Reaction service terlalu lama merespons.'
+        : 'Reaction service tidak dapat dihubungi.',
     });
   }
 }
