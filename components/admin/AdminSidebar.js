@@ -2,18 +2,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 const ITEMS = [
-  { href: '/admin', label: 'Dashboard' },
-  { href: '/admin/users', label: 'Users' },
-  { href: '/admin/dev', label: 'DEV Keys (API)' },
-  { href: '/admin/rate-limit', label: 'Rate Limit' },
-  { href: '/admin/redeem', label: 'Redeem Codes' },
-  { href: '/admin/pricing', label: 'Pricing' },
-  { href: '/admin/promotions', label: 'Promotions' },
-  { href: '/admin/queue', label: 'Queue' },
-  { href: '/admin/statistics', label: 'Statistics' },
-  { href: '/admin/maintenance', label: 'Maintenance' },
-  { href: '/admin/settings', label: 'Settings' },
-  { href: '/admin/logs', label: 'Logs' },
+  { href: '/admin', label: 'Overview', icon: '⌂' },
+  { href: '/admin/users', label: 'Users', icon: '♙' },
 ];
 
 export default function AdminSidebar({ open, onClose }) {
@@ -26,19 +16,33 @@ export default function AdminSidebar({ open, onClose }) {
 
   return (
     <>
-      <aside className={`admin-sidebar ${open ? 'open' : ''}`}>
-        <div className="admin-sidebar-header">
-          <span>⚡ ReactionWA Admin</span>
-          <button className="admin-sidebar-close" onClick={onClose}>✕</button>
+      <aside className={`admin-sidebar-new ${open ? 'open' : ''}`}>
+        <div className="admin-brand">
+          <div className="admin-brand-mark">R</div>
+          <div><strong>ReactionWA</strong><span>admin notebook</span></div>
+          <button className="admin-sidebar-close" onClick={onClose}>×</button>
         </div>
+
+        <div className="admin-nav-label">Workspace</div>
         <nav>
           {ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} className={router.pathname === item.href ? 'active' : ''} onClick={onClose}>
-              {item.label}
+            <Link
+              key={item.href}
+              href={item.href}
+              className={router.pathname === item.href ? 'active' : ''}
+              onClick={onClose}
+            >
+              <span>{item.icon}</span>{item.label}
             </Link>
           ))}
-          <button className="admin-logout-btn" onClick={logout}>Logout</button>
         </nav>
+
+        <div className="admin-sidebar-note">
+          <span>NOTE</span>
+          Direct reaction flow is active. No global queue.
+        </div>
+
+        <button className="admin-logout-new" onClick={logout}>↪ Sign out</button>
       </aside>
       {open && <div className="admin-overlay" onClick={onClose} />}
     </>
