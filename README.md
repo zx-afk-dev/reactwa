@@ -4,7 +4,7 @@ Website untuk memberikan reaction ke postingan Saluran WhatsApp, dengan sistem
 coin (Free), VIP, DEV, redeem code, antrean global, dan Admin Panel lengkap.
 
 - **Framework:** Next.js (Pages Router, JavaScript)
-- **Database:** Firebase Admin SDK (Firestore) — server-side only
+- **Database:** Firebase Admin SDK — Firestore untuk data aplikasi + Realtime Database untuk global reaction queue/rate-limit/lock
 - **Hosting:** Vercel
 
 ---
@@ -14,7 +14,7 @@ coin (Free), VIP, DEV, redeem code, antrean global, dan Admin Panel lengkap.
 - Semua akses Firestore lewat **Firebase Admin SDK di API routes** saja.
   Browser tidak pernah bicara langsung ke Firestore (lihat `firestore.rules`,
   yang menolak semua akses client langsung sebagai lapisan keamanan tambahan).
-- **Antrean global** (`lib/queue.js`) disimpan di Firestore (`queueTasks`) dengan dokumen lock (`queue/lock`). Request publik hanya memasukkan task ke antrean dan tidak menunggu upstream. Worker dipanggil oleh GitHub Actions melalui `/api/cron/queue`, sedangkan Vercel Cron dipakai khusus untuk cleanup data lama.
+- **Antrean reaction global** (`lib/reactionQueue.js`) disimpan di Firebase Realtime Database. Queue, dedupe, rate-limit, queue counter, job status, dan worker lock semuanya memakai RTDB. Request publik hanya memasukkan task ke antrean dan tidak menunggu upstream. Worker dipanggil oleh GitHub Actions melalui `/api/cron/reaction-queue`.
 - **Coin** disimpan per-identitas (hash IP untuk Free, atau `plan:keyId`
   untuk VIP/DEV) dan diubah lewat Firestore transaction (`lib/coin.js`),
   sehingga aman dari race condition saat banyak request bersamaan.
@@ -42,7 +42,7 @@ Buka `http://localhost:3000`.
 ## 3. Setup Firebase
 
 1. Buat project di [Firebase Console](https://console.firebase.google.com).
-2. Aktifkan **Firestore Database** (mode production).
+2. Aktifkan **Firestore Database** dan **Realtime Database** pada project yang sama.
 3. Buka **Project Settings → Service Accounts → Generate new private key**,
    unduh file JSON-nya.
 4. Dari file JSON tersebut, isi ke `.env.local`:
@@ -95,9 +95,10 @@ Login di `/admin/login`.
 ## 5. Setup Upstream Reaction API
 
 ```
-UPSTREAM_REACT_URL=<URL endpoint reaction upstream>
-UPSTREAM_REFRESH_TOKEN=<refresh token upstream>
+REACTION_API_URL=https://react.zfile.web.id/api/send-reaction
 UPSTREAM_TIMEOUT=30000
+UPSTREAM_MAX_RETRIES=3
+FIREBASE_DATABASE_URL=<Realtime Database URL>
 ```
 
 Refresh token ini **hanya** dipakai di server (`lib/upstream.js`), tidak pernah dikirim ke browser.
