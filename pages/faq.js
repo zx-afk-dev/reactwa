@@ -5,7 +5,7 @@ const FAQ = [
   ['Kenapa request bisa menunggu?', 'Karena semua request melewati antrean global dan worker sengaja dibatasi agar upstream tidak menerima lonjakan besar sekaligus.'],
   ['Apakah request yang sama bisa masuk berkali-kali?', 'Request identik yang datang dalam jendela deduplikasi akan ditolak sementara.'],
   ['Apa yang terjadi jika upstream lambat atau error?', 'Worker memakai timeout dan retry terbatas. Setelah batas retry tercapai, job ditandai failed.'],
-  ['Apakah antrean bertahan saat Vercel mengganti instance?', 'Data antrean disimpan di Redis, bukan memory instance serverless.'],
+  ['Apakah antrean bertahan saat Vercel mengganti instance?', 'Data antrean disimpan di Firebase Realtime Database, bukan memory instance serverless.'],
 ];
 
 export default function FAQ() {
