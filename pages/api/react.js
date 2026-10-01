@@ -1,49 +1,57 @@
-const UPSTREAM_URL = process.env.REACTION_API_URL || 'https://react.zfile.web.id/api/send-reaction';
+import { waitUntil } from '@vercel/functions';
+import { checkAbuseLimit, enqueueReaction, getClientIp, processNextReaction, validateReactionInput } from '../../lib/reactionQueue';
+import { redisConfigured } from '../../lib/redis';
+
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: '16kb' },
+  },
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ success: false, message: 'Method not allowed.' });
+    return res.status(405).json({ success: false, code: 'METHOD_NOT_ALLOWED', message: 'Method not allowed.' });
   }
 
-  const { url, emojis } = req.body || {};
-
-  if (typeof url !== 'string' || !/^https?:\/\/whatsapp\.com\/channel\//i.test(url.trim())) {
-    return res.status(400).json({ success: false, message: 'URL WhatsApp Channel tidak valid.' });
+  if (!redisConfigured()) {
+    return res.status(503).json({ success: false, code: 'QUEUE_NOT_CONFIGURED', message: 'Antrean belum dikonfigurasi.' });
   }
 
-  if (typeof emojis !== 'string' || !emojis.trim()) {
-    return res.status(400).json({ success: false, message: 'Reaction belum dipilih.' });
+  const input = validateReactionInput(req.body);
+  if (!input.ok) {
+    return res.status(input.status).json({ success: false, code: input.code, message: input.message });
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const ip = getClientIp(req);
+  const limit = await checkAbuseLimit(ip);
+
+  if (!limit.allowed) {
+    res.setHeader('Retry-After', String(limit.retryAfter));
+    return res.status(429).json({
+      success: false,
+      code: 'RATE_LIMIT',
+      message: 'Terlalu banyak request. Tunggu sebentar sebelum mencoba lagi.',
+    });
+  }
 
   try {
-    const upstream = await fetch(UPSTREAM_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: url.trim(),
-        emojis: emojis.trim()
-      }),
-      signal: controller.signal
+    const result = await enqueueReaction({ url: input.url, emojis: input.emojis, ip });
+    if (!result.ok) return res.status(result.status).json({ success: false, code: result.code, message: result.message });
+
+    // Opportunistic worker: starts one queue item without exposing the upstream URL to the browser.
+    waitUntil(processNextReaction().catch(() => {}));
+
+    return res.status(202).json({
+      success: true,
+      code: 'QUEUED',
+      message: 'Request masuk ke antrean global.',
+      requestId: result.job.id,
+      status: 'waiting',
+      queue: { position: result.position },
     });
-
-    const data = await upstream.json().catch(() => ({
-      success: false,
-      message: 'Upstream mengembalikan response tidak valid.'
-    }));
-
-    return res.status(upstream.ok ? 200 : upstream.status).json(data);
   } catch (error) {
-    return res.status(error.name === 'AbortError' ? 504 : 502).json({
-      success: false,
-      message: error.name === 'AbortError'
-        ? 'Request upstream timeout.'
-        : 'Gagal menghubungi reaction service.'
-    });
-  } finally {
-    clearTimeout(timeout);
+    console.error('[reaction-proxy]', error);
+    return res.status(503).json({ success: false, code: 'QUEUE_ERROR', message: 'Antrean sedang tidak tersedia.' });
   }
 }
