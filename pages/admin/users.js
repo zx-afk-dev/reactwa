@@ -1,62 +1,84 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import DataTable from '../../components/admin/DataTable';
+
+function UserRow({ user, onAction }) {
+  const plan = user.plan || 'FREE';
+  return (
+    <tr>
+      <td><code title={user.identifier}>{user.identifier?.slice(0, 16)}…</code></td>
+      <td><span className={`admin-plan ${plan.toLowerCase()}`}>{plan}</span></td>
+      <td><b>{Number(user.coin || 0).toLocaleString('id-ID')}</b></td>
+      <td>{user.suspended ? <span className="admin-status danger">Suspended</span> : <span className="admin-status ok">Active</span>}</td>
+      <td className="admin-actions">
+        <button onClick={() => onAction(user, 'add10')}>+10</button>
+        <button onClick={() => onAction(user, 'remove10')}>−10</button>
+        <button onClick={() => onAction(user, user.suspended ? 'unsuspend' : 'suspend')}>{user.suspended ? 'Unsuspend' : 'Suspend'}</button>
+      </td>
+    </tr>
+  );
+}
 
 export default function AdminUsers() {
-  const [items, setItems] = useState([]);
+  const [users, setUsers] = useState([]);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   async function load() {
     setLoading(true);
-    const resp = await fetch(`/api/admin/users?q=${encodeURIComponent(q)}`);
-    const data = await resp.json();
-    if (data.success) setItems(data.items);
-    setLoading(false);
+    try {
+      const r = await fetch('/api/admin/users');
+      const d = await r.json();
+      if (!r.ok || !d.success) throw new Error(d.message || 'Gagal memuat users');
+      setUsers(d.users || []);
+      setError('');
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
-  async function doAction(id, action, value) {
-    await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
+  async function action(user, action) {
+    const r = await fetch('/api/admin/users', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, value }),
+      body: JSON.stringify({ identifier: user.identifier, action }),
     });
-    load();
+    const d = await r.json();
+    if (!r.ok || !d.success) return setError(d.message || 'Aksi gagal');
+    setUsers((list) => list.map((x) => x.identifier === user.identifier ? { ...x, ...d.user } : x));
   }
 
-  async function remove(id) {
-    if (!confirm('Hapus/revoke user ini?')) return;
-    await fetch(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    load();
-  }
+  const filtered = users.filter((u) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    return String(u.identifier).toLowerCase().includes(needle) || String(u.plan).toLowerCase().includes(needle);
+  });
 
   return (
     <AdminLayout title="Users">
+      <section className="admin-page-head">
+        <div><div className="admin-scribble">people / anonymous identities</div><h2>User archive</h2><p>Profil anonim, plan, coin, dan status akses.</p></div>
+        <button className="admin-refresh" onClick={load}>↻ Refresh</button>
+      </section>
+
       <div className="admin-toolbar">
-        <input className="input" placeholder="Cari identifier user..." value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className="btn btn-secondary" onClick={load}>Cari</button>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari identifier atau plan..." />
+        <span>{filtered.length} user ditampilkan</span>
       </div>
-      {loading ? <p>Memuat...</p> : (
-        <DataTable
-          columns={[
-            { key: 'id', label: 'Identifier' },
-            { key: 'plan', label: 'Plan' },
-            { key: 'coin', label: 'Coin' },
-            { key: 'suspended', label: 'Suspended', render: (r) => (r.suspended ? 'Ya' : 'Tidak') },
-          ]}
-          rows={items}
-          renderActions={(r) => (
-            <div className="row-actions">
-              <button className="btn-xs" onClick={() => doAction(r.id, 'adjustCoin', Number(prompt('Tambah/kurangi coin (contoh: 5 atau -3):', '1')) || 0)}>Coin</button>
-              <button className="btn-xs" onClick={() => doAction(r.id, 'resetCoin')}>Reset Coin</button>
-              <button className="btn-xs" onClick={() => doAction(r.id, r.suspended ? 'unsuspend' : 'suspend')}>{r.suspended ? 'Unsuspend' : 'Suspend'}</button>
-              <button className="btn-xs btn-danger" onClick={() => remove(r.id)}>Hapus</button>
-            </div>
-          )}
-        />
-      )}
+
+      {error && <div className="admin-error">{error}</div>}
+      <section className="admin-panel table-wrap">
+        {loading ? <div className="admin-skeleton">Membaca user archive...</div> : (
+          <table className="admin-table">
+            <thead><tr><th>Identifier</th><th>Plan</th><th>Coin</th><th>Status</th><th>Aksi</th></tr></thead>
+            <tbody>
+              {filtered.map((user) => <UserRow key={user.identifier} user={user} onAction={action} />)}
+              {!filtered.length && <tr><td colSpan="5" className="empty-cell">Tidak ada user.</td></tr>}
+            </tbody>
+          </table>
+        )}
+      </section>
     </AdminLayout>
   );
 }
