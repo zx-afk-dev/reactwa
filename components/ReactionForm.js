@@ -41,7 +41,15 @@ export default function ReactionForm() {
           setCoin(Number(profile.coin || 0));
         }
       } catch {
-        // /api/react still has a server-side IP fallback.
+        // If ipify is unavailable, load the profile from the server-side IP fallback.
+        try {
+          const profileResponse = await fetch('/api/me', { cache: 'no-store' });
+          const profile = await profileResponse.json();
+          if (active && profile.success) {
+            setPlan(profile.plan || 'FREE');
+            setCoin(Number(profile.coin || 0));
+          }
+        } catch {}
       } finally {
         if (active) setIpLoading(false);
       }
