@@ -1,28 +1,39 @@
 # ReactionWA
 
-Website untuk memberikan reaction ke postingan Saluran WhatsApp, dengan sistem
-coin (Free), VIP, DEV, redeem code, antrean global, dan Admin Panel lengkap.
+Website sederhana untuk memberikan reaction ke postingan Saluran WhatsApp.
 
 - **Framework:** Next.js (Pages Router, JavaScript)
-- **Database:** Firebase Admin SDK — Firestore untuk data aplikasi + Realtime Database untuk global reaction queue/rate-limit/lock
 - **Hosting:** Vercel
+- **Reaction service:** `https://react.zfile.web.id/api/send-reaction`
 
 ---
 
-## 1. Arsitektur singkat
+## 1. Arsitektur
 
-- Semua akses Firestore lewat **Firebase Admin SDK di API routes** saja.
-  Browser tidak pernah bicara langsung ke Firestore (lihat `firestore.rules`,
-  yang menolak semua akses client langsung sebagai lapisan keamanan tambahan).
-- **Antrean reaction global** (`lib/reactionQueue.js`) disimpan di Firebase Realtime Database. Queue, dedupe, rate-limit, queue counter, job status, dan worker lock semuanya memakai RTDB. Request publik hanya memasukkan task ke antrean dan tidak menunggu upstream. Worker dipanggil oleh GitHub Actions melalui `/api/cron/reaction-queue`.
-- **Coin** disimpan per-identitas (hash IP untuk Free, atau `plan:keyId`
-  untuk VIP/DEV) dan diubah lewat Firestore transaction (`lib/coin.js`),
-  sehingga aman dari race condition saat banyak request bersamaan.
-- IP pengguna diambil browser langsung dari `https://api.ipify.org` (sesuai
-  requirement, tanpa proxy server tambahan) untuk ditampilkan di UI. Namun
-  untuk keperluan kuota/keamanan, backend tetap mendeteksi IP sendiri dari
-  header request (`x-forwarded-for`) dan **hash** sebelum disimpan — IP
-  mentah tidak pernah disimpan permanen.
+Alurnya sekarang langsung:
+
+```
+Browser
+  ↓
+POST /api/react
+  ↓
+Validasi server
+  ↓
+Reaction service
+  ↓
+Response
+```
+
+Tidak ada lagi:
+
+- global queue
+- Firebase Realtime Database untuk queue
+- queue worker
+- GitHub Actions queue worker
+- endpoint reaction-status
+- polling status di browser
+
+Browser tetap tidak memanggil reaction service secara langsung. Request diteruskan oleh server-side API route.
 
 ---
 
@@ -31,7 +42,6 @@ coin (Free), VIP, DEV, redeem code, antrean global, dan Admin Panel lengkap.
 ```bash
 npm install
 cp .env.example .env.local
-# isi semua variabel di .env.local (lihat bagian 4 & 5)
 npm run dev
 ```
 
@@ -39,161 +49,77 @@ Buka `http://localhost:3000`.
 
 ---
 
-## 3. Setup Firebase
+## 3. Environment
 
-1. Buat project di [Firebase Console](https://console.firebase.google.com).
-2. Aktifkan **Firestore Database** dan **Realtime Database** pada project yang sama.
-3. Buka **Project Settings → Service Accounts → Generate new private key**,
-   unduh file JSON-nya.
-4. Dari file JSON tersebut, isi ke `.env.local`:
-   - `FIREBASE_PROJECT_ID` = `project_id`
-   - `FIREBASE_CLIENT_EMAIL` = `client_email`
-   - `FIREBASE_PRIVATE_KEY_BASE64` = base64 seluruh `private_key` (disarankan untuk Vercel).
-   - `FIREBASE_PRIVATE_KEY` = `private_key` sebagai fallback.
-5. (Opsional tapi disarankan) Deploy `firestore.rules` yang sudah disediakan:
-   ```bash
-   npm install -g firebase-tools
-   firebase login
-   firebase init firestore   # pilih project yang sama, gunakan firestore.rules yang sudah ada
-   firebase deploy --only firestore:rules
-   ```
-   File ini sengaja **menolak semua akses client langsung**, karena semua
-   baca/tulis di project ini lewat Admin SDK di server (yang otomatis bypass
-   rules ini).
+Minimal:
 
-Collection yang dipakai (dibuat otomatis saat dipakai, tidak perlu dibuat manual):
-`users`, `vipKeys`, `devKeys`, `redeemCodes`, `redeemHistory`, `queueTasks`,
-`queue` (dokumen lock), `stats`, `settings`, `promotions`, `logs`.
-
----
-
-## 4. Setup Admin Panel
-
-Admin Panel **tidak** memakai collection Firestore untuk kredensial owner —
-cukup 2 env var:
-
-```bash
-# Generate hash password (contoh password: "supersecret123"):
-node -e "console.log(require('crypto').createHash('sha256').update('supersecret123').digest('hex'))"
-
-# Generate session secret:
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Isi ke `.env.local`:
-```
-ADMIN_USERNAME=owner
-ADMIN_PASSWORD_HASH=<hasil hash di atas>
-ADMIN_SESSION_SECRET=<hasil random di atas>
-IP_HASH_SALT=<string acak lain, boleh pakai generator yang sama>
-```
-
-Login di `/admin/login`.
-
----
-
-## 5. Setup Upstream Reaction API
-
-```
+```env
 REACTION_API_URL=https://react.zfile.web.id/api/send-reaction
-UPSTREAM_TIMEOUT=30000
-UPSTREAM_MAX_RETRIES=3
-FIREBASE_DATABASE_URL=<Realtime Database URL>
+UPSTREAM_TIMEOUT=10000
+NEXT_PUBLIC_SITE_URL=
 ```
 
-Refresh token ini **hanya** dipakai di server (`lib/upstream.js`), tidak pernah dikirim ke browser.
+`REACTION_API_URL` hanya digunakan server-side. Jangan menggunakan prefix `NEXT_PUBLIC_` untuk endpoint upstream.
 
 ---
 
-## 6. Cara membuat VIP Key / DEV Key / Redeem Code
+## 4. API
 
-Semua dilakukan lewat Admin Panel setelah login:
+### POST /api/react
 
-- **VIP Key:** `/admin/vip` → isi coin, rate limit/menit, expiry (opsional) → "Buat Key".
-  Key otomatis berformat `VIP-XXXXXXXXXXXX`. Bagikan ke user setelah mereka
-  membeli plan VIP (lihat alur pembelian di bagian 8).
-- **DEV Key:** `/admin/dev` → isi rate limit/menit, allowed host/origin
-  (opsional, kosongkan untuk bebas), expiry (opsional) → "Buat Key". Key
-  berformat `DEV-XXXXXXXXXXXX`, dipakai lewat header `x-api-key` di
-  `/api/v1/react` (lihat `/docs`).
-- **Redeem Code:** `/admin/redeem` → isi coin, maksimal penggunaan, expiry
-  (opsional) → "Buat Kode". Kode berformat `RDM-XXXXXXXX`, ditukar user di
-  halaman `/redeem`.
+Request:
 
-Semua key/kode bisa di-**disable**, di-**enable** kembali, atau **dihapus**
-langsung dari tabel di Admin Panel.
+```json
+{
+  "url": "https://whatsapp.com/channel/xxxxxxxx/123",
+  "emojis": "🥳,👍"
+}
+```
+
+Response sukses mengikuti response dari reaction service:
+
+```json
+{
+  "success": true,
+  "code": "SENT",
+  "message": "Reaction berhasil dikirim.",
+  "data": {}
+}
+```
+
+Request dibatasi maksimal 5 reaction unik.
 
 ---
 
-## 7. Deploy ke Vercel
+## 5. Deploy ke Vercel
 
-1. Push project ini ke GitHub/GitLab/Bitbucket.
+1. Push repository ke GitHub.
 2. Import repository ke Vercel.
-3. Isi environment variables dari `.env.example` di Vercel.
-4. Pastikan `CRON_SECRET` juga tersedia di Vercel karena dipakai endpoint cron.
-5. Deploy. Setelah selesai, buka `/admin/login`.
+3. Tambahkan environment variables dari `.env.example`.
+4. Deploy.
 
-### Worker queue
-
-Worker queue dijalankan melalui GitHub Actions pada `.github/workflows/queue-worker.yml`.
-Tambahkan repository secret GitHub Actions:
-
-```
-CRON_SECRET=<nilai yang sama dengan CRON_SECRET di Vercel>
-```
-
-Workflow dapat dijalankan manual melalui **GitHub → Actions → Queue Worker → Run workflow** untuk pengujian.
-
-### Cleanup Firestore
-
-Vercel Cron memanggil `/api/cron/cleanup` setiap hari. Cleanup hanya menghapus:
-- `queueTasks` dengan status `success` yang lebih dari 7 hari.
-- `queueTasks` dengan status `failed` yang lebih dari 14 hari.
-- `logs` yang lebih dari 30 hari.
-
-Task `waiting` dan `processing` tidak disentuh oleh cleanup.
+Tidak diperlukan `CRON_SECRET`, GitHub Actions worker, atau Firebase Realtime Database untuk alur reaction direct.
 
 ---
 
-## 8. Alur pembelian VIP / Dev
-
-Belum ada payment gateway (sesuai requirement). Halaman `/pricing`
-menampilkan tombol **"Beli VIP" / "Beli Dev"** yang mengarahkan ke WhatsApp
-Owner (`https://wa.me/<nomor>`) dengan pesan otomatis. Setelah pembayaran
-manual dikonfirmasi, Owner membuatkan VIP/DEV key lewat Admin Panel dan
-mengirimkannya ke pembeli.
-
-Nomor WhatsApp Owner, harga, durasi, coin, dan benefit tiap plan semuanya
-bisa diubah dari `/admin/pricing` dan `/admin/settings` — tidak ada yang
-hardcode di kode.
-
----
-
-## 9. Struktur folder
+## 6. Struktur utama
 
 ```
-pages/            → routing (Pages Router)
-  api/             → semua API routes (react, redeem, status, admin/*, v1/react)
-  admin/           → halaman-halaman Admin Panel
-components/        → UI components
-  admin/           → komponen khusus Admin Panel
-lib/                → semua logic inti (queue, coin, keys, redeem, stats, dst)
-styles/globals.css  → design system (mobile-first, scrapbook/notebook theme)
-firestore.rules     → security rules (menolak akses client langsung)
+pages/
+  index.js
+  docs.js
+  faq.js
+  changelog.js
+  privacy.js
+  api/
+    react.js
+
+components/
+  ReactionForm.js
+  Layout.js
+  Navbar.js
+  Footer.js
+
+styles/
+  globals.css
 ```
-
----
-
-## 10. Catatan penting
-
-- **Jangan** commit `.env.local` — sudah ada di `.gitignore`.
-- Semua kode error (`INVALID_URL`, `NO_COIN`, `RATE_LIMIT`, dst) konsisten di
-  seluruh API — lihat `lib/errors.js`.
-- Reset coin harian dan penambahan coin/redeem semuanya atomic lewat
-  Firestore transaction — lihat komentar di `lib/coin.js` dan `lib/redeem.js`.
-- Karena tidak ada worker persisten di serverless, antrean diproses oleh GitHub Actions melalui endpoint worker. Browser hanya melakukan polling status task setiap 4 detik selama status masih `waiting`/`processing`, dengan batas polling sekitar 10 menit per sesi.
-
-### Upstream reliability
-- `UPSTREAM_TIMEOUT` default 30 detik dan dibatasi 5–120 detik.
-- HTTP non-2xx dari upstream diklasifikasikan sebagai `UPSTREAM_HTTP_<status>`.
-- Response upstream yang ditulis ke log disanitasi; identifier/account/business fields tidak disimpan.
