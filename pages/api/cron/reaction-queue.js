@@ -1,5 +1,4 @@
 import { getQueueStats, processNextReaction } from '../../../lib/reactionQueue';
-import { redisConfigured } from '../../../lib/redis';
 
 export const config = { maxDuration: 30 };
 
@@ -11,14 +10,12 @@ export default async function handler(req, res) {
     return res.status(401).json({ success: false, message: 'Unauthorized.' });
   }
 
-  if (!redisConfigured()) return res.status(503).json({ success: false, code: 'QUEUE_NOT_CONFIGURED' });
-
   try {
     const result = await processNextReaction();
     const queue = await getQueueStats();
     return res.status(200).json({ success: true, result, queue });
   } catch (error) {
     console.error('[reaction-queue-cron]', error);
-    return res.status(503).json({ success: false, code: 'QUEUE_ERROR' });
+    return res.status(503).json({ success: false, code: 'QUEUE_ERROR', message: 'Worker Firebase gagal.' });
   }
 }
