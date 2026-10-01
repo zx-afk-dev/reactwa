@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { track } from '@vercel/analytics';
 
 const DEFAULT_EMOJIS = ['🥳', '😹', '👍', '❤️', '🔥'];
 const MAX_EMOJIS = 5;
@@ -124,6 +125,10 @@ export default function ReactionForm() {
       }
 
       if (typeof data.coin === 'number') setCoin(data.coin);
+      track('Reaction Sent', {
+        plan: data.plan || plan,
+        customEmoji: Boolean(data.customEmoji),
+      });
       setResult({
         ok: true,
         message: data.message || 'Reaction berhasil dikirim.',
