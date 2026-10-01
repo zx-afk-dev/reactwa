@@ -12,9 +12,15 @@ export default async function handler(req, res) {
 
   try {
     const cleanup = await cleanupExpiredState(50);
-    const result = await processNextReaction();
+    const results = [];
+    const passes = Math.min(5, Number(process.env.WORKER_BATCH_SIZE || 5));
+    for (let i = 0; i < passes; i += 1) {
+      const next = await processNextReaction();
+      results.push(next);
+      if (!next.processed || next.reason === 'EMPTY' || next.reason === 'WORKER_BUSY') break;
+    }
     const queue = await getQueueStats();
-    return res.status(200).json({ success: true, cleanup, result, queue });
+    return res.status(200).json({ success: true, cleanup, results, queue });
   } catch (error) {
     console.error('[reaction-queue-cron]', error);
     return res.status(503).json({ success: false, code: 'QUEUE_ERROR', message: 'Worker Firebase gagal.' });
