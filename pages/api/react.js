@@ -4,6 +4,7 @@ import { getOrCreateUser, spendCoin, refundCoin } from '../../lib/coin';
 import { getSettings } from '../../lib/settings';
 import { recordNewUser, recordStat } from '../../lib/stats';
 import { db } from '../../lib/firebaseAdmin';
+import { verifyRequestUser } from '../../lib/userAuth';
 
 const UPSTREAM_URL = process.env.REACTION_API_URL || 'https://react.zfile.web.id/api/send-reaction';
 
@@ -75,13 +76,13 @@ export default async function handler(req, res) {
     });
   }
 
-  // IP is fetched directly by the browser from ipify. It is only used here
-  // as a visitor identifier; the raw IP is never stored in Firestore.
+  const authUser = await verifyRequestUser(req);
   const clientIp = typeof req.body?.visitorIp === 'string' ? req.body.visitorIp.trim() : '';
   const ip = clientIp || getClientIpFromRequest(req);
-  const identifier = hashIp(ip);
+  const identifier = authUser?.uid || hashIp(ip);
 
   let currentPlan = 'FREE';
+  let reactionCount = 1;
 
   try {
     const settings = await getSettings();
@@ -96,11 +97,17 @@ export default async function handler(req, res) {
 
     const userRef = db.collection('users').doc(identifier);
     const before = await userRef.get();
-    const user = await getOrCreateUser(identifier);
+    const user = await getOrCreateUser(identifier, authUser ? {
+      authUid: authUser.uid,
+      email: authUser.email,
+      displayName: authUser.name,
+      authProvider: authUser.provider,
+    } : {});
     const plan = user.plan || 'FREE';
     currentPlan = plan;
     const maxEmojis = plan === 'VIP' ? 30 : 5;
     const reactionCheck = validateReactionEmojis(reaction, maxEmojis);
+    reactionCount = reactionCheck.list?.length || 1;
 
     if (!reactionCheck.valid) {
       return res.status(400).json({
@@ -160,7 +167,6 @@ export default async function handler(req, res) {
         success: false,
         code: 'UPSTREAM_ERROR',
         message: data?.message || 'Reaction service gagal memproses request.',
-        response: data,
       });
     }
 
@@ -191,7 +197,7 @@ export default async function handler(req, res) {
     await recordStat({
       plan: currentPlan,
       success: false,
-      reactionCount: reactionCheck.list.length,
+      reactionCount,
     }).catch(() => {});
 
     console.error('[reaction-proxy]', {
