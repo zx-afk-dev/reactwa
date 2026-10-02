@@ -6,6 +6,7 @@ import { recordNewUser, recordStat } from '../../lib/stats';
 import { db } from '../../lib/firebaseAdmin';
 import { verifyRequestUser } from '../../lib/userAuth';
 import { logEvent } from '../../lib/logger';
+import { rewardReferralReaction } from '../../lib/referral';
 
 const UPSTREAM_URL = process.env.REACTION_API_URL || 'https://react.zfile.web.id/api/send-reaction';
 
@@ -176,6 +177,10 @@ export default async function handler(req, res) {
     });
 
     await logEvent('reaction_sent', 'Reaction berhasil dikirim.', { plan, reactionCount }).catch(() => {});
+
+    if (authUser?.uid) {
+      await rewardReferralReaction(authUser.uid).catch((err) => console.error('referral reaction reward', err));
+    }
 
     const remainingCoin = plan === 'FREE'
       ? Number((await userRef.get()).data()?.coin || 0)
