@@ -155,3 +155,8 @@ body{margin:0;color:var(--ink);font-family:'DM Sans',sans-serif;background:#ddd2
 .maintenance-check-paper span{display:inline-block;width:22px;overflow:hidden;vertical-align:bottom;animation:maintenanceDots 1s steps(4,end) infinite}
 @keyframes maintenanceDots{0%{width:0}100%{width:22px}}
 @media(max-width:600px){.maintenance-screen{padding:18px}.maintenance-paper{padding:48px 25px 28px}.maintenance-paper h1{font-size:45px}.maintenance-description{font-size:14px}.maintenance-footer{flex-direction:column;gap:5px}}
+
+
+/* Coin reset countdown */
+.coin-reset-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700;border:1px dashed rgba(49,93,120,.35);background:#dce9e8;color:#315d78;font-family:'DM Sans',sans-serif}
+@media(max-width:520px){.account-strip{gap:6px}.coin-reset-badge{font-size:10px}}
