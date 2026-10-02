@@ -9,12 +9,9 @@ export default withAdminAuth(async (req, res) => {
       const settings = await getSettings();
       return sendSuccess(res, { maintenance: settings.maintenance });
     }
-
-    if (req.method === 'PATCH') {
+    if (req.method === 'PATCH' || req.method === 'PUT') {
       const input = req.body?.maintenance;
-      if (!input || typeof input !== 'object' || Array.isArray(input)) {
-        return sendError(res, ERROR_CODES.BAD_REQUEST, 'Data maintenance tidak valid.');
-      }
+      if (!input || typeof input !== 'object' || Array.isArray(input)) return sendError(res, ERROR_CODES.BAD_REQUEST, 'Data maintenance tidak valid.');
       const maintenance = {
         enabled: Boolean(input.enabled),
         title: typeof input.title === 'string' ? input.title.trim().slice(0, 200) : '',
@@ -25,7 +22,6 @@ export default withAdminAuth(async (req, res) => {
       await logEvent('admin_maintenance', `Admin ${req.admin.username} mengubah status maintenance.`, { admin: req.admin.username, maintenance });
       return sendSuccess(res, { maintenance: settings.maintenance });
     }
-
     return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed.');
   } catch (err) {
     console.error('admin maintenance error', err);
