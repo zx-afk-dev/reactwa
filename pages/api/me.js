@@ -8,8 +8,6 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
 
   try {
-    // The browser can pass the public IP obtained directly from ipify.
-    // If unavailable, safely fall back to the request IP seen by Vercel.
     const providedIp = typeof req.query?.ip === 'string' ? req.query.ip.trim() : '';
     const ip = providedIp || getClientIpFromRequest(req);
     const identifier = hashIp(ip);
@@ -28,6 +26,7 @@ export default async function handler(req, res) {
       plan: info.plan || 'FREE',
       coin: Number(info.coin || 0),
       planExpiresAt: info.planExpiresAt || null,
+      lastCoinReset: info.lastCoinReset || null,
     });
   } catch (err) {
     console.error('me endpoint error', err);
