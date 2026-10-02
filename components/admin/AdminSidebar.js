@@ -5,6 +5,7 @@ const ITEMS = [
   { href: '/admin', label: 'Overview', icon: '⌂' },
   { href: '/admin/users', label: 'Users', icon: '♙' },
   { href: '/admin/logs', label: 'Logs', icon: '✎' },
+  { href: '/admin/maintenance', label: 'Maintenance', icon: '⚙' },
 ];
 
 export default function AdminSidebar({ open, onClose }) {
@@ -27,12 +28,8 @@ export default function AdminSidebar({ open, onClose }) {
         <div className="admin-nav-label">Workspace</div>
         <nav>
           {ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={router.pathname === item.href ? 'active' : ''}
-              onClick={onClose}
-            >
+            <Link key={item.href} href={item.href}
+              className={router.pathname === item.href ? 'active' : ''} onClick={onClose}>
               <span>{item.icon}</span>{item.label}
             </Link>
           ))}
