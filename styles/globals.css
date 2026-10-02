@@ -190,3 +190,62 @@ body{margin:0;color:var(--ink);font-family:'DM Sans',sans-serif;background:#ddd2
   .nav-user{max-width:130px}
   .form-grid{grid-template-columns:1fr}
 }
+
+/* ===== Hamburger navbar ===== */
+.navbar{position:relative}
+.nav-hamburger{margin-left:auto;width:43px;height:43px;display:grid;place-content:center;gap:5px;border:2px solid var(--ink);background:#fffaf0;border-radius:7px;cursor:pointer;box-shadow:3px 3px 0 rgba(40,38,32,.16);z-index:12}
+.nav-hamburger span{display:block;width:19px;height:2px;background:var(--ink);transition:.18s}
+.nav-hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.nav-drawer{display:flex;align-items:center;gap:18px}
+.nav-links{display:flex;gap:18px;align-items:center}
+.nav-links a{display:inline-flex;align-items:center;gap:6px}
+.nav-links a>span{font-size:14px}
+@media(min-width:701px){
+  .nav-drawer{position:absolute;right:7%;top:74px;min-width:260px;display:none;padding:13px;background:#fffaf0;border:1px dashed rgba(40,38,32,.25);box-shadow:6px 8px 0 rgba(50,40,25,.12);transform:rotate(.4deg)}
+  .nav-drawer.open{display:grid}
+  .nav-links{display:grid;gap:4px}
+  .nav-links a{padding:9px 10px;text-decoration:none;color:var(--ink)}
+  .nav-links a:hover{background:#eee3ce}
+  .nav-account{border-top:1px dashed #b9af9d;padding-top:10px;flex-wrap:wrap}
+}
+@media(max-width:700px){
+  .navbar{padding:15px 5%;height:70px}
+  .nav-drawer{position:absolute;left:5%;right:5%;top:64px;display:none;padding:13px;background:#fffaf0;border:1px dashed rgba(40,38,32,.25);box-shadow:6px 8px 0 rgba(50,40,25,.12);z-index:10;transform:rotate(.2deg)}
+  .nav-drawer.open{display:grid}
+  .nav-links{display:grid;gap:3px}
+  .nav-links a{padding:11px 10px;text-decoration:none;color:var(--ink)}
+  .nav-account{border-top:1px dashed #b9af9d;padding-top:11px;flex-wrap:wrap}
+  .nav-auth-error{width:auto;height:auto;padding:5px 8px;border-radius:5px}
+}
+
+/* ===== Referral ===== */
+.referral-page{max-width:900px;margin:auto}
+.referral-link-card{margin-top:28px}
+.referral-link-card h2{font:700 34px Kalam;margin:8px 0}
+.referral-link{padding:14px;background:#dce9e8;border-left:4px solid var(--blue);font:700 13px 'DM Sans';word-break:break-all}
+.referral-note{margin-bottom:0}
+.referral-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-top:22px}
+.referral-stats .paper-card{padding:18px}
+.referral-stats span{font:700 11px Kalam;color:var(--red);letter-spacing:.08em}
+.referral-stats strong{display:block;font:700 31px Kalam;margin:3px 0}
+.referral-stats small{color:var(--muted);font-size:11px}
+@media(max-width:700px){.referral-stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== Database cleanup ===== */
+.database-collection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.database-collection{padding:15px;text-align:left;border:1px dashed #aaa08d;background:#fffaf0;cursor:pointer;box-shadow:2px 3px 0 rgba(50,40,25,.08)}
+.database-collection.selected{background:#dce9e8;border:2px solid var(--blue);transform:rotate(-.3deg)}
+.database-collection strong,.database-collection span{display:block}
+.database-collection strong{font:700 17px Kalam}
+.database-collection span{font-size:11px;color:var(--muted);margin-top:3px}
+.database-danger-form{margin-top:24px;padding-top:22px;border-top:1px dashed #b9af9d;display:grid;grid-template-columns:1fr 280px auto;gap:14px;align-items:end}
+.database-danger-form h3{font:700 27px Kalam;margin:3px 0}
+.database-danger-form p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+.database-danger-form label{font:700 11px Kalam;color:var(--red)}
+.database-danger-form input{display:block;width:100%;margin-top:6px;padding:10px;border:1px solid #b4aa98;background:#fffdf6;border-radius:4px;font:12px 'DM Sans'}
+.database-danger-button{background:var(--red)}
+.database-danger-button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:850px){.database-collection-grid{grid-template-columns:repeat(2,1fr)}.database-danger-form{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.database-collection-grid{grid-template-columns:1fr}.database-danger-form{grid-template-columns:1fr}.database-danger-form button{width:100%}}
