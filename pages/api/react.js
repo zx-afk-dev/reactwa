@@ -5,6 +5,7 @@ import { getSettings } from '../../lib/settings';
 import { recordNewUser, recordStat } from '../../lib/stats';
 import { db } from '../../lib/firebaseAdmin';
 import { verifyRequestUser } from '../../lib/userAuth';
+import { logEvent } from '../../lib/logger';
 
 const UPSTREAM_URL = process.env.REACTION_API_URL || 'https://react.zfile.web.id/api/send-reaction';
 
@@ -173,6 +174,8 @@ export default async function handler(req, res) {
     await recordStat({ plan, success: true, reactionCount: reactionCheck.list.length }).catch((err) => {
       console.error('reaction stat error', err);
     });
+
+    await logEvent('reaction_sent', 'Reaction berhasil dikirim.', { plan, reactionCount }).catch(() => {});
 
     const remainingCoin = plan === 'FREE'
       ? Number((await userRef.get()).data()?.coin || 0)
