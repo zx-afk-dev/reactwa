@@ -1,16 +1,13 @@
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { useAuth } from './AuthProvider';
 
 export default function Navbar() {
-  const router = useRouter();
-  const { user, ready, isGoogleUser, signInGoogle, logout, error } = useAuth();
+  const { user, ready, isGoogleUser, signInGoogle, logout, error, authBusy } = useAuth();
 
   async function handleAuth() {
-    try {
-      if (isGoogleUser) await logout();
-      else await signInGoogle();
-    } catch {}
+    if (authBusy) return;
+    if (isGoogleUser) await logout();
+    else await signInGoogle();
   }
 
   return (
@@ -35,14 +32,27 @@ export default function Navbar() {
               {user.photoURL ? <img src={user.photoURL} alt="" /> : <span className="nav-user-dot" />}
               <span>{user.displayName || user.email || 'Google account'}</span>
             </span>
-            <button type="button" className="nav-auth-button" onClick={handleAuth}>Keluar</button>
+            <button type="button" className="nav-auth-button" onClick={handleAuth} disabled={authBusy}>
+              {authBusy ? 'Keluar…' : 'Keluar'}
+            </button>
           </>
         ) : (
-          <button type="button" className="nav-auth-button google" onClick={handleAuth} disabled={!ready}>
-            {ready ? 'Masuk Google' : 'Menyiapkan…'}
+          <button
+            type="button"
+            className="nav-auth-button google"
+            onClick={handleAuth}
+            disabled={!ready || authBusy}
+            aria-busy={authBusy}
+          >
+            {authBusy ? 'Membuka Google…' : ready ? 'Masuk Dengan Google' : 'Menyiapkan…'}
           </button>
         )}
-        {error && <span className="nav-auth-error" title={error}>!</span>}
+
+        {error && (
+          <span className="nav-auth-error" title={error} role="alert">
+            {error}
+          </span>
+        )}
       </div>
     </header>
   );
