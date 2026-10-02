@@ -3,6 +3,18 @@ import { track } from '@vercel/analytics';
 
 const DEFAULT_EMOJIS = ['🥳', '😹', '👍', '❤️', '🔥'];
 const MAX_EMOJIS = 5;
+const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+function formatRemaining(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) return `${hours}j ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}d`;
+  return `${seconds}d`;
+}
 
 export default function ReactionForm() {
   const [url, setUrl] = useState('');
@@ -11,16 +23,34 @@ export default function ReactionForm() {
   const [visitorIp, setVisitorIp] = useState('');
   const [plan, setPlan] = useState('FREE');
   const [coin, setCoin] = useState(0);
+  const [lastCoinReset, setLastCoinReset] = useState(null);
+  const [resetIn, setResetIn] = useState(null);
   const [loading, setLoading] = useState(false);
   const [ipLoading, setIpLoading] = useState(true);
   const [result, setResult] = useState(null);
 
+  const loadProfile = async (ip = visitorIp) => {
+    try {
+      const endpoint = ip
+        ? `/api/me?ip=${encodeURIComponent(ip)}`
+        : '/api/me';
+
+      const profileResponse = await fetch(endpoint, { cache: 'no-store' });
+      const profile = await profileResponse.json();
+
+      if (profile.success) {
+        setPlan(profile.plan || 'FREE');
+        setCoin(Number(profile.coin || 0));
+        setLastCoinReset(profile.lastCoinReset ? Number(profile.lastCoinReset) : null);
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     let active = true;
 
-    async function loadProfile() {
+    async function loadInitialProfile() {
       try {
-        // Direct browser request. This is intentionally NOT proxied by ReactionWA.
         const ipResponse = await fetch('https://api.ipify.org/?format=json');
         const ipData = await ipResponse.json();
         const ip = typeof ipData?.ip === 'string' ? ipData.ip.trim() : '';
@@ -39,15 +69,17 @@ export default function ReactionForm() {
         if (active && profile.success) {
           setPlan(profile.plan || 'FREE');
           setCoin(Number(profile.coin || 0));
+          setLastCoinReset(profile.lastCoinReset ? Number(profile.lastCoinReset) : null);
         }
       } catch {
-        // If ipify is unavailable, load the profile from the server-side IP fallback.
         try {
           const profileResponse = await fetch('/api/me', { cache: 'no-store' });
           const profile = await profileResponse.json();
+
           if (active && profile.success) {
             setPlan(profile.plan || 'FREE');
             setCoin(Number(profile.coin || 0));
+            setLastCoinReset(profile.lastCoinReset ? Number(profile.lastCoinReset) : null);
           }
         } catch {}
       } finally {
@@ -55,12 +87,37 @@ export default function ReactionForm() {
       }
     }
 
-    loadProfile();
+    loadInitialProfile();
 
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (plan !== 'FREE' || !lastCoinReset) {
+      setResetIn(null);
+      return;
+    }
+
+    const updateCountdown = async () => {
+      const nextReset = Number(lastCoinReset) + RESET_INTERVAL_MS;
+      const remaining = nextReset - Date.now();
+
+      if (remaining <= 0) {
+        setResetIn(0);
+        await loadProfile();
+        return;
+      }
+
+      setResetIn(remaining);
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(timer);
+  }, [plan, lastCoinReset]);
 
   const hasCustomSelected = useMemo(
     () => emojis.some((emoji) => !DEFAULT_EMOJIS.includes(emoji)),
@@ -133,10 +190,13 @@ export default function ReactionForm() {
       }
 
       if (typeof data.coin === 'number') setCoin(data.coin);
+      if (data.lastCoinReset) setLastCoinReset(Number(data.lastCoinReset));
+
       track('Reaction Sent', {
         plan: data.plan || plan,
         customEmoji: Boolean(data.customEmoji),
       });
+
       setResult({
         ok: true,
         message: data.message || 'Reaction berhasil dikirim.',
@@ -160,6 +220,9 @@ export default function ReactionForm() {
       <div className="account-strip">
         <span className={`plan-badge plan-${plan.toLowerCase()}`}>{plan}</span>
         <span className="coin-badge">🪙 {coin} coin</span>
+        {plan === 'FREE' && resetIn !== null && (
+          <span className="coin-reset-badge">↻ reset {formatRemaining(resetIn)}</span>
+        )}
         {ipLoading && <span className="ip-status">checking IP…</span>}
       </div>
 
