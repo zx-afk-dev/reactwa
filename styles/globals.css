@@ -134,3 +134,24 @@ body{margin:0;color:var(--ink);font-family:'DM Sans',sans-serif;background:#ddd2
 .admin-maintenance-page>.admin-note{margin-top:8px;position:relative}
 @media(max-width:800px){.admin-maintenance-page{grid-template-columns:1fr}.admin-maintenance-head{flex-direction:column}.admin-toggle{width:100%}}
 @media(max-width:520px){.admin-maintenance-paper{padding:23px 19px}.admin-maintenance-head h2{font-size:29px}.admin-maintenance-actions{flex-direction:column}.admin-maintenance-actions button{width:100%}}
+
+
+ /* ===== Public maintenance screen ===== */
+.maintenance-screen{min-height:100vh;display:grid;place-items:center;padding:28px;background:#d8cdb9;background-image:radial-gradient(rgba(60,40,20,.07) .7px,transparent .7px);background-size:8px 8px}
+.maintenance-paper{width:min(650px,100%);position:relative;background:#fffaf0;padding:58px 52px 35px;box-shadow:9px 11px 0 rgba(50,40,25,.13);border:1px solid rgba(80,60,30,.08);transform:rotate(-.45deg);background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% 32px}
+.maintenance-tape{position:absolute;width:125px;height:28px;top:-13px;left:50%;transform:translateX(-50%) rotate(-2deg);background:#e4c86d;opacity:.82}
+.maintenance-pin{position:absolute;right:25px;top:20px;width:15px;height:15px;border-radius:50%;background:var(--red);box-shadow:0 2px 4px #0004}
+.maintenance-mark{width:62px;height:62px;display:grid;place-items:center;margin-bottom:22px;border:2px solid var(--ink);border-radius:48% 44% 50% 43%;background:#f5e7a8;font:700 31px Kalam;transform:rotate(-6deg)}
+.maintenance-paper h1{max-width:530px;margin:9px 0 14px;font:700 clamp(42px,8vw,68px)/.94 Kalam;letter-spacing:-.035em}
+.maintenance-description{max-width:520px;margin:0;color:var(--muted);font-size:16px;line-height:1.75}
+.maintenance-eta{display:inline-flex;flex-direction:column;margin-top:25px;padding:11px 15px;background:#dce9e8;border-left:4px solid var(--blue);transform:rotate(.6deg)}
+.maintenance-eta span{font:700 10px Kalam;color:var(--red);letter-spacing:.1em}
+.maintenance-eta b{margin-top:2px;font-size:13px}
+.maintenance-line{height:1px;margin:38px 0 18px;background:#aaa08d}
+.maintenance-footer{display:flex;justify-content:space-between;gap:15px;color:var(--muted);font:14px Kalam}
+.maintenance-footer span:last-child{color:var(--red)}
+.maintenance-check{min-height:70vh;display:grid;place-items:center}
+.maintenance-check-paper{padding:17px 22px;background:#fffaf0;box-shadow:4px 5px 0 rgba(50,40,25,.1);font:18px Kalam;color:var(--muted);transform:rotate(-.5deg)}
+.maintenance-check-paper span{display:inline-block;width:22px;overflow:hidden;vertical-align:bottom;animation:maintenanceDots 1s steps(4,end) infinite}
+@keyframes maintenanceDots{0%{width:0}100%{width:22px}}
+@media(max-width:600px){.maintenance-screen{padding:18px}.maintenance-paper{padding:48px 25px 28px}.maintenance-paper h1{font-size:45px}.maintenance-description{font-size:14px}.maintenance-footer{flex-direction:column;gap:5px}}
