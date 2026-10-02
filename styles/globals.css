@@ -106,3 +106,31 @@ body{margin:0;color:var(--ink);font-family:'DM Sans',sans-serif;background:#ddd2
 @media(max-width:700px){.admin-sidebar-new{position:fixed;left:-270px;top:0;width:260px;transition:left .2s;box-shadow:8px 0 25px #0002}.admin-sidebar-new.open{left:0}.admin-sidebar-close{display:block}.admin-menu-btn{display:block}.admin-topbar{padding:16px 18px}.admin-user-chip{font-size:11px}.admin-body{padding:22px 16px 40px}.admin-welcome,.admin-page-head{align-items:flex-start;flex-direction:column}.admin-welcome h2,.admin-page-head h2{font-size:32px}.admin-note-row{grid-template-columns:1fr}.admin-chart{height:210px}.admin-metric-grid{grid-template-columns:repeat(2,1fr);gap:9px}.admin-metric{padding:14px}.admin-metric strong{font-size:25px}.admin-overlay{position:fixed;inset:0;background:#0005;z-index:15}.admin-toolbar{align-items:stretch;flex-direction:column}.admin-toolbar input{max-width:none}.admin-table{min-width:680px}}
 
 .admin-modal-backdrop{position:fixed;inset:0;background:rgba(35,28,20,.48);display:grid;place-items:center;padding:20px;z-index:40}.admin-modal{width:min(500px,100%);position:relative}.admin-paper{background:#fffaf0;padding:26px;box-shadow:8px 10px 0 rgba(40,30,15,.16);transform:rotate(-.4deg)}.admin-modal h3{font:700 30px Kalam;margin:4px 0}.admin-modal-id{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}.admin-modal label{display:block;margin-top:15px;font:700 12px Kalam;color:var(--red)}.admin-modal input,.admin-modal select{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #b4aa98;background:#fffdf6;border-radius:4px;font:13px 'DM Sans'}.admin-modal input:disabled{opacity:.5}.admin-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}.admin-modal-actions button{border:1px dashed #8e8472;background:#fffaf0;padding:9px 12px;border-radius:4px;font-weight:700;cursor:pointer}.admin-modal-actions button[type="submit"]{background:var(--ink);color:#fffaf0}.admin-log-list{display:grid;gap:14px}.admin-log-card{position:relative;background:#fffaf0;padding:18px 20px 16px 23px;border:1px solid rgba(80,60,30,.1);box-shadow:4px 5px 0 rgba(50,40,25,.08);transform:rotate(-.2deg)}.admin-log-card:nth-child(even){transform:rotate(.25deg)}.admin-log-pin{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--red);top:9px;left:9px;box-shadow:0 1px 2px #0003}.admin-log-head{display:flex;justify-content:space-between;gap:15px;align-items:center}.admin-log-type{font:700 14px Kalam;color:var(--red)}.admin-log-head time{font-size:10px;color:var(--muted)}.admin-log-card p{margin:8px 0;line-height:1.5;font-size:13px}.admin-log-card details{border-top:1px dashed #c0b6a4;padding-top:8px}.admin-log-card summary{font-size:11px;color:var(--muted);cursor:pointer}.admin-log-card pre{white-space:pre-wrap;overflow:auto;background:#f2eadb;padding:10px;margin:8px 0 0;font-size:10px;max-height:240px}
+
+
+/* ===== Admin maintenance control ===== */
+.admin-maintenance-page{max-width:900px;display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:22px;align-items:start}
+.admin-maintenance-paper{position:relative;background:#fffaf0;padding:28px;box-shadow:7px 9px 0 rgba(50,40,25,.11);border:1px solid rgba(80,60,30,.09);transform:rotate(-.25deg)}
+.admin-maintenance-paper:before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:rgba(143,48,48,.22)}
+.admin-maintenance-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin:7px 0 17px}
+.admin-maintenance-head h2{font:700 34px Kalam;margin:3px 0 5px}
+.admin-maintenance-head p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.admin-toggle{min-width:118px;border:2px solid var(--ink);background:#e8e0d0;color:var(--ink);padding:10px 13px;border-radius:5px;display:flex;align-items:center;justify-content:center;gap:8px;font:700 12px 'DM Sans';cursor:pointer;box-shadow:3px 3px 0 rgba(40,30,15,.18);transition:.15s}
+.admin-toggle span{width:10px;height:10px;border-radius:50%;background:#8b8172;box-shadow:0 1px 2px #0004}
+.admin-toggle.active{background:#f3deda;border-color:var(--red);color:var(--red)}
+.admin-toggle.active span{background:var(--red)}
+.admin-toggle:hover{transform:translateY(-1px)}
+.admin-maintenance-status{display:flex;align-items:center;gap:8px;margin:16px 0 24px;padding:10px 12px;background:#f1eadc;border-left:3px solid #9d9585;font-size:12px;color:var(--muted)}
+.admin-maintenance-status .dot{width:8px;height:8px;border-radius:50%;background:#8b8172;flex:0 0 auto}
+.admin-maintenance-status .dot.on{background:var(--red);box-shadow:0 0 0 3px rgba(143,48,48,.12)}
+.admin-maintenance-paper>label{display:block;margin:17px 0 7px;font:700 12px Kalam;color:var(--red);letter-spacing:.03em}
+.admin-maintenance-paper>input,.admin-maintenance-paper>textarea{display:block;width:100%;border:1px solid #b7ad9b;border-radius:4px;background:#fffdf6;padding:11px 12px;color:var(--ink);font:14px 'DM Sans';outline:none;resize:vertical}
+.admin-maintenance-paper>input:focus,.admin-maintenance-paper>textarea:focus{border-color:var(--red);box-shadow:0 0 0 2px rgba(143,48,48,.08)}
+.admin-maintenance-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:24px;padding-top:18px;border-top:1px dashed #b9af9d}
+.admin-save{border:2px solid var(--ink);background:var(--red);color:#fff8ed;padding:11px 15px;border-radius:5px;font-weight:700;cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
+.admin-save:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 var(--ink)}
+.admin-save:disabled,.admin-refresh:disabled{opacity:.55;cursor:wait}
+.admin-maintenance-message{margin-top:16px;padding:10px 12px;background:#e8f0e3;border-left:4px solid #56724d;font-size:12px;line-height:1.5}
+.admin-maintenance-page>.admin-note{margin-top:8px;position:relative}
+@media(max-width:800px){.admin-maintenance-page{grid-template-columns:1fr}.admin-maintenance-head{flex-direction:column}.admin-toggle{width:100%}}
+@media(max-width:520px){.admin-maintenance-paper{padding:23px 19px}.admin-maintenance-head h2{font-size:29px}.admin-maintenance-actions{flex-direction:column}.admin-maintenance-actions button{width:100%}}
