@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   try {
     const authUser = await verifyRequestUser(req);
-    if (!authUser || authUser.isAnonymous) return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Login Google diperlukan untuk referral.');
+    if (!authUser || authUser.isAnonymous || authUser.provider !== 'google.com') return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Login dengan Google diperlukan untuk referral.');
 
     const code = typeof req.body?.code === 'string' ? req.body.code : '';
     const result = await claimReferral(authUser.uid, code);
