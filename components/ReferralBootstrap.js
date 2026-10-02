@@ -22,6 +22,11 @@ export default function ReferralBootstrap() {
         const token = await getIdToken();
         if (!token || cancelled) return;
 
+        await fetch('/api/me', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        });
+
         const response = await fetch('/api/referral/claim', {
           method: 'POST',
           headers: {
