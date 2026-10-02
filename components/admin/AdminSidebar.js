@@ -5,6 +5,7 @@ const ITEMS = [
   { href: '/admin', label: 'Overview', icon: '⌂' },
   { href: '/admin/users', label: 'Users', icon: '♙' },
   { href: '/admin/logs', label: 'Logs', icon: '✎' },
+  { href: '/admin/redeem', label: 'VIP Keys', icon: '◆' },
   { href: '/admin/maintenance', label: 'Maintenance', icon: '⚙' },
 ];
 
