@@ -3,18 +3,25 @@ import { getClientIpFromRequest, hashIp } from '../../lib/ip';
 import { getOrCreateUser } from '../../lib/coin';
 import { db } from '../../lib/firebaseAdmin';
 import { recordNewUser } from '../../lib/stats';
+import { verifyRequestUser } from '../../lib/userAuth';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
 
   try {
+    const authUser = await verifyRequestUser(req);
     const providedIp = typeof req.query?.ip === 'string' ? req.query.ip.trim() : '';
     const ip = providedIp || getClientIpFromRequest(req);
-    const identifier = hashIp(ip);
+    const identifier = authUser?.uid || hashIp(ip);
 
     const userRef = db.collection('users').doc(identifier);
     const before = await userRef.get();
-    const info = await getOrCreateUser(identifier);
+    const info = await getOrCreateUser(identifier, authUser ? {
+      authUid: authUser.uid,
+      email: authUser.email,
+      displayName: authUser.name,
+      authProvider: authUser.provider,
+    } : {});
 
     if (!before.exists) {
       await recordNewUser(info.plan || 'FREE').catch((err) => {
@@ -27,6 +34,10 @@ export default async function handler(req, res) {
       coin: Number(info.coin || 0),
       planExpiresAt: info.planExpiresAt || null,
       lastCoinReset: info.lastCoinReset || null,
+      authenticated: Boolean(authUser),
+      isAnonymous: Boolean(authUser?.isAnonymous),
+      email: authUser?.email || null,
+      displayName: authUser?.name || null,
     });
   } catch (err) {
     console.error('me endpoint error', err);
