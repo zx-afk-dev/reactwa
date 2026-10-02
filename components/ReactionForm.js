@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { track } from '@vercel/analytics';
 
 const DEFAULT_EMOJIS = ['🥳', '😹', '👍', '❤️', '🔥'];
-const MAX_EMOJIS = 5;
+const FREE_MAX_EMOJIS = 5;
+const VIP_MAX_EMOJIS = 30;
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 function formatRemaining(ms) {
@@ -125,19 +126,20 @@ export default function ReactionForm() {
   );
 
   const cost = hasCustomSelected ? 2 : 1;
-  const canAddCustom = customEmoji.trim() && emojis.length < MAX_EMOJIS;
+  const maxEmojis = plan === 'VIP' ? VIP_MAX_EMOJIS : FREE_MAX_EMOJIS;
+  const canAddCustom = customEmoji.trim() && emojis.length < maxEmojis;
 
   function toggleEmoji(emoji) {
     setEmojis((current) => {
       if (current.includes(emoji)) return current.filter((x) => x !== emoji);
-      if (current.length >= MAX_EMOJIS) return current;
+      if (current.length >= maxEmojis) return current;
       return [...current, emoji];
     });
   }
 
   function addCustomEmoji() {
     const emoji = customEmoji.trim();
-    if (!emoji || emojis.length >= MAX_EMOJIS || emojis.includes(emoji)) return;
+    if (!emoji || emojis.length >= maxEmojis || emojis.includes(emoji)) return;
     setEmojis((current) => [...current, emoji]);
     setCustomEmoji('');
   }
@@ -229,7 +231,7 @@ export default function ReactionForm() {
       <h2>Leave a little reaction ✎</h2>
       <p className="muted">
         Request dikirim langsung ke reaction service. Free memakai coin;
-        VIP dan Dev tidak mengurangi coin.
+        VIP tidak mengurangi coin.
       </p>
 
       <label className="field-label" htmlFor="channel-url">Channel post URL</label>
@@ -245,7 +247,7 @@ export default function ReactionForm() {
       />
 
       <span className="field-label">
-        Your reactions <small>(maks. {MAX_EMOJIS})</small>
+        Your reactions <small>(maks. {maxEmojis})</small>
       </span>
 
       <div className="emoji-row">
@@ -271,7 +273,7 @@ export default function ReactionForm() {
           placeholder="Emoji custom, contoh: 🚀"
           value={customEmoji}
           onChange={(e) => setCustomEmoji(e.target.value)}
-          disabled={loading || emojis.length >= MAX_EMOJIS}
+          disabled={loading || emojis.length >= maxEmojis}
         />
         <button
           type="button"
