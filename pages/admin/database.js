@@ -53,9 +53,9 @@ export default function AdminDatabase() {
     <AdminLayout title="Database Cleanup">
       <section className="admin-page-head">
         <div>
-          <div className="admin-scribble">firebase / cleanup desk</div>
+          <div className="admin-scribble">supabase / cleanup desk</div>
           <h2>Database cleanup</h2>
-          <p>Hapus data Firestore secara bertahap. Hanya collection yang ditentukan aplikasi yang bisa disentuh.</p>
+          <p>Hapus data Supabase secara bertahap. Hanya collection yang ditentukan aplikasi yang bisa disentuh.</p>
         </div>
         <button className="admin-refresh" onClick={load}>↻ Refresh</button>
       </section>
@@ -63,7 +63,7 @@ export default function AdminDatabase() {
       <div className="admin-note-row">
         <article className="admin-note yellow">
           <b>⚠ User data</b><br />
-          Menghapus <code>users</code> hanya menghapus profil Firestore, bukan akun Firebase Authentication.
+          Menghapus <code>users</code> hanya menghapus profil database, bukan akun Firebase Authentication.
         </article>
         <article className="admin-note blue">
           <b>✦ Batch kecil</b><br />
@@ -79,7 +79,7 @@ export default function AdminDatabase() {
 
       <section className="admin-panel" style={{ marginTop: 22 }}>
         <div className="admin-panel-head">
-          <div><span className="admin-scribble">collection archive</span><h3>Firestore collections</h3></div>
+          <div><span className="admin-scribble">collection archive</span><h3>Supabase tables</h3></div>
         </div>
 
         {loading ? <div className="admin-skeleton">Menghitung dokumen…</div> : (
