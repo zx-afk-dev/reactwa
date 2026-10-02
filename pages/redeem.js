@@ -61,7 +61,7 @@ export default function Redeem() {
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       <section className="content-page">
         <div className="scribble">account / redeem note</div>
-        <h1>Redeem VIP</h1>
+        <h1>Redeem Coin / VIP</h1>
         <p className="hero-text">
           Kode VIP terikat ke akun Google agar benefit tidak bergantung pada IP/browser.
           Setiap VIP key hanya dapat digunakan satu kali.
@@ -74,7 +74,7 @@ export default function Redeem() {
             <>
               <h2>Login dulu ✦</h2>
               <p className="muted">
-                Redeem VIP membutuhkan akun Google. Setelah login, akun akan menjadi identitas
+                Redeem membutuhkan akun Google. Setelah login, akun akan menjadi identitas
                 tetap untuk menyimpan plan dan coin.
               </p>
               <button className="send-button" type="button" onClick={login} disabled={loginLoading}>
@@ -87,12 +87,12 @@ export default function Redeem() {
                 <span className="plan-badge plan-vip">GOOGLE</span>
                 <span className="coin-badge">{user.displayName || user.email || 'Akun Google'}</span>
               </div>
-              <h2>Masukkan VIP key ✎</h2>
-              <p className="muted">Key akan langsung diproses dan tidak bisa digunakan lagi setelah berhasil.</p>
+              <h2>Masukkan redeem code ✎</h2>
+              <p className="muted">Code single-use akan langsung diproses setelah berhasil.</p>
               <form onSubmit={handleSubmit}>
                 <input
                   className="paper-input"
-                  placeholder="VIP-XXXXXXXX"
+                  placeholder="COIN-XXXXXXXX atau VIP-XXXXXXXX"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   disabled={loading}
