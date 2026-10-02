@@ -33,8 +33,8 @@ export default function ReactionForm() {
   const [result, setResult] = useState(null);
 
   const loadProfile = async (ip = visitorIp) => {
-    const token = await getIdToken();
     try {
+      const token = await getIdToken();
       const endpoint = ip
         ? `/api/me?ip=${encodeURIComponent(ip)}`
         : '/api/me';
@@ -65,9 +65,13 @@ export default function ReactionForm() {
 
         setVisitorIp(ip);
 
+        const token = await getIdToken();
         const profileResponse = await fetch(
           `/api/me?ip=${encodeURIComponent(ip)}`,
-          { cache: 'no-store' }
+          {
+            cache: 'no-store',
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
         );
         const profile = await profileResponse.json();
 
@@ -78,7 +82,11 @@ export default function ReactionForm() {
         }
       } catch {
         try {
-          const profileResponse = await fetch('/api/me', { cache: 'no-store' });
+          const token = await getIdToken();
+          const profileResponse = await fetch('/api/me', {
+            cache: 'no-store',
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
           const profile = await profileResponse.json();
 
           if (active && profile.success) {
