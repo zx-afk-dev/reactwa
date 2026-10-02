@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 
-const emptyForm = { coin: 0, durationDays: 30, expiresAt: '' };
+const emptyForm = { type: 'coin', coin: 10, durationDays: 30, expiresAt: '' };
 
 export default function AdminRedeem() {
   const [items, setItems] = useState([]);
@@ -42,7 +42,7 @@ export default function AdminRedeem() {
         return;
       }
 
-      setNotice(`VIP key berhasil dibuat: ${data.id}`);
+      setNotice(`${data.type === 'coin' ? 'Coin code' : 'VIP key'} berhasil dibuat: ${data.id}`);
       setForm(emptyForm);
       await load();
     } catch {
@@ -64,35 +64,41 @@ export default function AdminRedeem() {
   }
 
   async function remove(id) {
-    if (!confirm('Hapus VIP key ini?')) return;
+    if (!confirm('Hapus redeem code ini?')) return;
     await fetch(`/api/admin/redeem-codes/${id}`, { method: 'DELETE' });
     load();
   }
 
   return (
-    <AdminLayout title="VIP Keys">
+    <AdminLayout title="Redeem Codes">
       <section className="admin-page-head">
         <div>
-          <div className="admin-scribble">vip / key generator</div>
-          <h2>VIP keys</h2>
-          <p>Setiap key otomatis single-use dan dapat memberi bonus coin + durasi VIP.</p>
+          <div className="admin-scribble">redeem / code generator</div>
+          <h2>Redeem codes</h2>
+          <p>Buat kode coin bonus atau VIP. Semua kode dibuat server-side dan single-use.</p>
         </div>
         <button className="admin-refresh" onClick={load}>↻ Refresh</button>
       </section>
 
       <form className="admin-panel admin-form" onSubmit={create}>
         <div className="admin-panel-head">
-          <div><span className="admin-scribble">new key</span><h3>Buat VIP key</h3></div>
+          <div><span className="admin-scribble">new key</span><h3>Buat redeem code</h3></div>
           <span className="admin-status ok">SINGLE USE</span>
         </div>
 
         <div className="form-grid">
+          <label>Jenis kode
+            <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <option value="coin">Coin bonus</option>
+              <option value="vip">VIP + Coin</option>
+            </select>
+          </label>
           <label>Bonus coin
             <input className="input" type="number" min="0" max="1000000000" value={form.coin}
               onChange={(e) => setForm({ ...form, coin: Number(e.target.value) })} />
           </label>
           <label>Durasi VIP (hari)
-            <input className="input" type="number" min="1" max="3650" value={form.durationDays}
+            <input className="input" type="number" min="1" max="3650" value={form.durationDays} disabled={form.type !== "vip"}
               onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })} />
           </label>
           <label>Expiry key (opsional)
@@ -106,7 +112,7 @@ export default function AdminRedeem() {
         </p>
 
         <button className="admin-save" disabled={creating}>
-          {creating ? 'Membuat key…' : 'Buat VIP Key →'}
+          {creating ? 'Membuat code…' : 'Buat Redeem Code →'}
         </button>
 
         {notice && <div className="admin-maintenance-message">{notice}</div>}
@@ -116,7 +122,8 @@ export default function AdminRedeem() {
         {loading ? <div className="admin-skeleton">Membaca daftar VIP key…</div> : (
           <DataTable
             columns={[
-              { key: 'id', label: 'Key' },
+              { key: 'id', label: 'Code' },
+              { key: 'type', label: 'Type', render: (r) => r.type === 'coin' ? 'COIN' : 'VIP' },
               { key: 'coin', label: 'Coin', render: (r) => `+${Number(r.coin || 0)}` },
               { key: 'durationDays', label: 'Durasi', render: (r) => `${r.durationDays || 30} hari` },
               { key: 'usedCount', label: 'Usage', render: (r) => `${r.usedCount || 0}/1` },
