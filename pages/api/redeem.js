@@ -46,26 +46,24 @@ export default async function handler(req, res) {
       );
     }
 
-    if (result.type !== 'vip') {
-      return sendError(res, ERROR_CODES.VALIDATION_ERROR, 'Kode ini bukan VIP key.');
-    }
+    const eventType = result.type === 'vip' ? 'vip' : 'coin';
+    const message = result.type === 'vip'
+      ? `Selamat! VIP aktif selama ${result.durationDays} hari${result.coin ? ` + ${result.coin} coin bonus` : ''}.`
+      : `Redeem berhasil. +${result.coin || 0} coin ditambahkan.`;
 
-    await logEvent('vip_redeem', `Akun Firebase ${identifier} berhasil redeem VIP key.`, {
+    await logEvent(result.type === 'vip' ? 'vip_redeem' : 'coin_redeem', `Akun Firebase ${identifier} berhasil redeem code.`, {
       uid: identifier,
-      type: 'vip',
+      type: eventType,
       durationDays: result.durationDays,
       coin: result.coin,
     });
 
-    const message = `Selamat! VIP aktif selama ${result.durationDays} hari`
-      + (result.coin ? ` + ${result.coin} coin bonus` : '') + '.';
-
     return sendSuccess(res, {
       message,
-      type: 'vip',
-      plan: 'VIP',
+      type: eventType,
+      plan: result.type === 'vip' ? 'VIP' : undefined,
       coin: result.coin || 0,
-      durationDays: result.durationDays,
+      durationDays: result.durationDays || null,
     });
   } catch (err) {
     console.error('redeem error', err);
