@@ -3,7 +3,6 @@ import { getClientIpFromRequest, hashIp } from '../../lib/ip';
 import { getOrCreateUser, spendCoin, refundCoin } from '../../lib/coin';
 import { getSettings } from '../../lib/settings';
 import { recordNewUser, recordStat } from '../../lib/stats';
-import { db } from '../../lib/firebaseAdmin';
 import { verifyRequestUser } from '../../lib/userAuth';
 import { logEvent } from '../../lib/logger';
 import { rewardReferralReaction } from '../../lib/referral';
@@ -97,8 +96,6 @@ export default async function handler(req, res) {
       });
     }
 
-    const userRef = db.collection('users').doc(identifier);
-    const before = await userRef.get();
     const user = await getOrCreateUser(identifier, authUser ? {
       authUid: authUser.uid,
       email: authUser.email,
@@ -120,7 +117,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!before.exists) {
+    if (user.isNew) {
       await recordNewUser(plan).catch((err) => console.error('new user stat', err));
     }
 
@@ -134,6 +131,7 @@ export default async function handler(req, res) {
 
     const coinCost = reactionCheck.hasCustom ? 2 : 1;
     let spent = 0;
+    let remainingCoin = Number(user.coin || 0);
 
     if (plan === 'FREE') {
       const spend = await spendCoin(identifier, coinCost);
@@ -157,6 +155,7 @@ export default async function handler(req, res) {
       }
 
       spent = coinCost;
+      remainingCoin = Number(spend.coin || 0);
     }
 
     const { response, data } = await sendUpstream(urlCheck.url, reactionCheck.list);
@@ -182,11 +181,7 @@ export default async function handler(req, res) {
       await rewardReferralReaction(authUser.uid).catch((err) => console.error('referral reaction reward', err));
     }
 
-    const remainingCoin = plan === 'FREE'
-      ? Number((await userRef.get()).data()?.coin || 0)
-      : Number(user.coin || 0);
-
-    return res.status(200).json({
+        return res.status(200).json({
       success: true,
       code: 'SENT',
       message: plan === 'VIP' ? 'Reaction VIP berhasil dikirim.' : 'Reaction berhasil dikirim.',
