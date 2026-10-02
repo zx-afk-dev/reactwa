@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   try {
     const authUser = await verifyRequestUser(req);
-    if (!authUser) return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Login diperlukan.');
+    if (!authUser || authUser.isAnonymous) return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Login Google diperlukan untuk referral.');
 
     await getOrCreateUser(authUser.uid, {
       authUid: authUser.uid,
