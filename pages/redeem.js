@@ -57,7 +57,7 @@ export default function Redeem() {
   }
 
   return (
-    <Layout title="Redeem VIP">
+    <Layout title="Redeem Coin / VIP">
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       <section className="content-page">
         <div className="scribble">account / redeem note</div>
