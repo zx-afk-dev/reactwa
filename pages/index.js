@@ -1,8 +1,45 @@
+import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import ReactionForm from '../components/ReactionForm';
 import GlobalStats from '../components/GlobalStats';
+import PublicMaintenance from '../components/PublicMaintenance';
 
 export default function Home() {
+  const [maintenance, setMaintenance] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/maintenance', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (active && data?.success) {
+          setMaintenance(data.maintenance || { enabled: false });
+        }
+      })
+      .catch(() => {
+        if (active) setMaintenance({ enabled: false });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (maintenance?.enabled) {
+    return <PublicMaintenance />;
+  }
+
+  if (maintenance === null) {
+    return (
+      <Layout>
+        <div className="maintenance-check" aria-label="Memeriksa status layanan">
+          <div className="maintenance-check-paper">Checking service note<span>...</span></div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <section className="hero">
