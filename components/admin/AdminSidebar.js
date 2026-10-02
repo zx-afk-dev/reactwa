@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 const ITEMS = [
   { href: '/admin', label: 'Overview', icon: '⌂' },
   { href: '/admin/users', label: 'Users', icon: '♙' },
+  { href: '/admin/logs', label: 'Logs', icon: '✎' },
 ];
 
 export default function AdminSidebar({ open, onClose }) {
