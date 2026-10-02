@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { track } from '@vercel/analytics';
+import { useAuth } from './AuthProvider';
 
 const DEFAULT_EMOJIS = ['🥳', '😹', '👍', '❤️', '🔥'];
 const FREE_MAX_EMOJIS = 5;
@@ -18,6 +19,7 @@ function formatRemaining(ms) {
 }
 
 export default function ReactionForm() {
+  const { ready: authReady, getIdToken } = useAuth();
   const [url, setUrl] = useState('');
   const [emojis, setEmojis] = useState(['🥳', '👍']);
   const [customEmoji, setCustomEmoji] = useState('');
@@ -31,12 +33,14 @@ export default function ReactionForm() {
   const [result, setResult] = useState(null);
 
   const loadProfile = async (ip = visitorIp) => {
+    const token = await getIdToken();
     try {
       const endpoint = ip
         ? `/api/me?ip=${encodeURIComponent(ip)}`
         : '/api/me';
 
-      const profileResponse = await fetch(endpoint, { cache: 'no-store' });
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const profileResponse = await fetch(endpoint, { cache: 'no-store', headers });
       const profile = await profileResponse.json();
 
       if (profile.success) {
@@ -88,12 +92,12 @@ export default function ReactionForm() {
       }
     }
 
-    loadInitialProfile();
+    if (authReady) loadInitialProfile();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [authReady]);
 
   useEffect(() => {
     if (plan !== 'FREE' || !lastCoinReset) {
@@ -169,9 +173,13 @@ export default function ReactionForm() {
     setLoading(true);
 
     try {
+      const token = await getIdToken();
       const response = await fetch('/api/react', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           url: url.trim(),
           emojis,
