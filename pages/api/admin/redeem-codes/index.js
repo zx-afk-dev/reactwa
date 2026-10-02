@@ -4,12 +4,12 @@ import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { sendSuccess, sendError, ERROR_CODES } from '../../../../lib/errors';
 import { logEvent } from '../../../../lib/logger';
 
-function generateVipCode() {
+function generateCode(prefix = 'VIP') {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const bytes = randomBytes(10);
   let out = '';
   for (let i = 0; i < bytes.length; i += 1) out += chars[bytes[i] % chars.length];
-  return `VIP-${out}`;
+  return `${prefix}-${out}`;
 }
 
 function parseExpiry(value) {
@@ -24,7 +24,7 @@ export default withAdminAuth(async (req, res) => {
 
   try {
     if (req.method === 'GET') {
-      const snap = await col.where('type', '==', 'vip').limit(200).get();
+      const snap = await col.limit(300).get();
       const items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       items.sort((a, b) => {
         const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : Number(a.createdAt || 0);
@@ -35,6 +35,7 @@ export default withAdminAuth(async (req, res) => {
     }
 
     if (req.method === 'POST') {
+      const type = req.body?.type === 'coin' ? 'coin' : 'vip';
       const coin = Math.floor(Number(req.body?.coin || 0));
       const durationDays = Math.floor(Number(req.body?.durationDays || 30));
       const expiresAt = parseExpiry(req.body?.expiresAt);
@@ -42,24 +43,24 @@ export default withAdminAuth(async (req, res) => {
       if (!Number.isFinite(coin) || coin < 0 || coin > 1000000000) {
         return sendError(res, ERROR_CODES.BAD_REQUEST, 'Coin tidak valid.');
       }
-      if (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3650) {
+      if (type === 'vip' && (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 3650)) {
         return sendError(res, ERROR_CODES.BAD_REQUEST, 'Durasi VIP harus 1–3650 hari.');
       }
       if (expiresAt === undefined) {
         return sendError(res, ERROR_CODES.BAD_REQUEST, 'Expiry key tidak valid.');
       }
 
-      let id = generateVipCode();
+      let id = generateCode(type === 'coin' ? 'COIN' : 'VIP');
       for (let i = 0; i < 5; i += 1) {
         if (!(await col.doc(id).get()).exists) break;
-        id = generateVipCode();
+        id = generateCode(type === 'coin' ? 'COIN' : 'VIP');
       }
 
       await col.doc(id).set({
-        type: 'vip',
-        plan: 'VIP',
+        type,
+        plan: type === 'vip' ? 'VIP' : null,
         coin,
-        durationDays,
+        ...(type === 'vip' ? { durationDays } : {}),
         maxUses: 1,
         usedCount: 0,
         status: 'active',
@@ -69,15 +70,16 @@ export default withAdminAuth(async (req, res) => {
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      await logEvent('vip_key_create', `Admin ${req.admin.username} membuat VIP key.`, {
+      await logEvent(type === 'vip' ? 'vip_key_create' : 'coin_key_create', `Admin ${req.admin.username} membuat ${type} redeem code.`, {
         admin: req.admin.username,
+        type,
         key: id,
         coin,
-        durationDays,
+        ...(type === 'vip' ? { durationDays } : {}),
         maxUses: 1,
       });
 
-      return sendSuccess(res, { id, coin, durationDays, maxUses: 1 }, 201);
+      return sendSuccess(res, { id, type, coin, ...(type === 'vip' ? { durationDays } : {}), maxUses: 1 }, 201);
     }
 
     return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
