@@ -66,21 +66,12 @@ export default async function handler(req, res) {
 
   const { url, reaction } = parseInput(req.body);
   const urlCheck = validateWhatsAppChannelUrl(url);
-  const reactionCheck = validateReactionEmojis(reaction);
 
   if (!urlCheck.valid) {
     return res.status(400).json({
       success: false,
       code: 'INVALID_URL',
       message: 'URL postingan Saluran WhatsApp tidak valid.',
-    });
-  }
-
-  if (!reactionCheck.valid) {
-    return res.status(400).json({
-      success: false,
-      code: 'INVALID_REACTION',
-      message: 'Pilih 1 sampai 3 emoji reaction yang valid.',
     });
   }
 
@@ -108,6 +99,17 @@ export default async function handler(req, res) {
     const user = await getOrCreateUser(identifier);
     const plan = user.plan || 'FREE';
     currentPlan = plan;
+    const maxEmojis = plan === 'VIP' ? 30 : 5;
+    const reactionCheck = validateReactionEmojis(reaction, maxEmojis);
+
+    if (!reactionCheck.valid) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_REACTION',
+        message: `Pilih 1 sampai ${maxEmojis} emoji reaction yang valid.`,
+        maxEmojis,
+      });
+    }
 
     if (!before.exists) {
       await recordNewUser(plan).catch((err) => console.error('new user stat', err));
@@ -173,12 +175,15 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       code: 'SENT',
-      message: data?.message || 'Reaction berhasil dikirim.',
+      message: plan === 'VIP' ? 'Reaction VIP berhasil dikirim.' : 'Reaction berhasil dikirim.',
       plan,
       coin: remainingCoin,
       cost: spent,
       customEmoji: reactionCheck.hasCustom,
-      data,
+      data: {
+        success: Boolean(data?.success),
+        message: typeof data?.message === 'string' ? data.message : null,
+      },
     });
   } catch (error) {
     const timeout = error?.name === 'AbortError';
