@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { track } from '@vercel/analytics';
 import { useAuth } from './AuthProvider';
@@ -32,6 +33,7 @@ export default function ReactionForm() {
   const [ipLoading, setIpLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [recaptchaToken, setRecaptchaToken] = useState('');
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
   const recaptchaRef = useRef(null);
   const recaptchaWidgetRef = useRef(null);
 
@@ -57,16 +59,10 @@ export default function ReactionForm() {
   useEffect(() => {
     let active = true;
 
-    function renderRecaptcha() {
-      if (!active || !recaptchaRef.current || !window.grecaptcha) return;
-      if (recaptchaWidgetRef.current !== null) return;
-
-      recaptchaWidgetRef.current = window.grecaptcha.render(recaptchaRef.current, {
-        sitekey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
-        callback: (token) => setRecaptchaToken(token || ''),
-        'expired-callback': () => setRecaptchaToken(''),
-        'error-callback': () => setRecaptchaToken(''),
-      });
+    if (!recaptchaReady || !recaptchaRef.current || !window.grecaptcha) {
+      return () => {
+        active = false;
+      };
     }
 
     if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
@@ -76,27 +72,25 @@ export default function ReactionForm() {
       };
     }
 
-    if (window.grecaptcha) {
-      window.grecaptcha.ready(renderRecaptcha);
-    } else {
-      const existing = document.querySelector('script[data-reactwa-recaptcha]');
-      if (existing) {
-        existing.addEventListener('load', renderRecaptcha);
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
-        script.async = true;
-        script.defer = true;
-        script.dataset.reactwaRecaptcha = 'true';
-        script.addEventListener('load', renderRecaptcha);
-        document.head.appendChild(script);
+    window.grecaptcha.ready(() => {
+      if (!active || !recaptchaRef.current || recaptchaWidgetRef.current !== null) return;
+
+      try {
+        recaptchaWidgetRef.current = window.grecaptcha.render(recaptchaRef.current, {
+          sitekey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
+          callback: (token) => setRecaptchaToken(token || ''),
+          'expired-callback': () => setRecaptchaToken(''),
+          'error-callback': () => setRecaptchaToken(''),
+        });
+      } catch (error) {
+        console.error('reCAPTCHA render error:', error);
       }
-    }
+    });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [recaptchaReady]);
 
   useEffect(() => {
     let active = true;
@@ -289,7 +283,14 @@ export default function ReactionForm() {
   }
 
   return (
-    <form className="reaction-card paper-card tilt-right" onSubmit={submit}>
+    <>
+      <Script
+        src="https://www.google.com/recaptcha/api.js?render=explicit"
+        strategy="afterInteractive"
+        onLoad={() => setRecaptchaReady(true)}
+        onError={() => console.error('Failed to load Google reCAPTCHA script.')}
+      />
+      <form className="reaction-card paper-card tilt-right" onSubmit={submit}>
       <span className="tape tape-yellow" aria-hidden="true" />
 
       <div className="card-label">ENTRY / 001</div>
@@ -407,6 +408,7 @@ export default function ReactionForm() {
           )}
         </div>
       )}
-    </form>
+      </form>
+    </>
   );
 }
