@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   GoogleAuthProvider,
+  getRedirectResult,
   onAuthStateChanged,
   signInAnonymously,
-  signInWithPopup,
-  linkWithPopup,
+  signInWithRedirect,
+  linkWithRedirect,
   signOut,
 } from 'firebase/auth';
 import { getFirebaseAuth } from '../lib/firebaseClient';
@@ -17,12 +18,14 @@ function readableAuthError(err) {
   const messages = {
     'auth/unauthorized-domain': 'Domain website belum diizinkan di Firebase Authentication.',
     'auth/operation-not-allowed': 'Login Google belum diaktifkan di Firebase Authentication.',
-    'auth/popup-blocked': 'Popup Google diblokir browser. Izinkan popup untuk website ini lalu coba lagi.',
+    'auth/popup-blocked': 'Login Google diblokir browser. Coba gunakan browser biasa, bukan browser dalam aplikasi.',
     'auth/popup-closed-by-user': 'Jendela login Google ditutup sebelum selesai.',
     'auth/cancelled-popup-request': 'Permintaan login dibatalkan karena ada popup lain yang sedang berjalan.',
     'auth/network-request-failed': 'Koneksi ke Firebase gagal. Periksa koneksi internet lalu coba lagi.',
     'auth/invalid-api-key': 'Firebase API key tidak valid atau belum dipasang di Vercel.',
     'auth/app/invalid-credential': 'Konfigurasi Firebase Web tidak valid.',
+    'auth/credential-already-in-use': 'Akun Google tersebut sudah memiliki akun ReactWA. Login dilanjutkan sebagai akun Google tersebut.',
+    'auth/account-exists-with-different-credential': 'Email tersebut sudah terdaftar dengan metode login lain.',
   };
 
   return messages[code] || err?.message || 'Login Google gagal. Coba lagi.';
@@ -36,32 +39,77 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsubscribe;
+    let mounted = true;
 
-    try {
-      const auth = getFirebaseAuth();
+    async function initAuth() {
+      try {
+        const auth = getFirebaseAuth();
 
-      unsubscribe = onAuthStateChanged(auth, async (current) => {
-        if (current) {
-          setUser(current);
-          setReady(true);
-          return;
+        // Handle the Google redirect result first.
+        // This replaces popup-based authentication and works better on mobile.
+        try {
+          const redirectResult = await getRedirectResult(auth);
+
+          if (mounted && redirectResult?.user) {
+            setUser(redirectResult.user);
+            setError('');
+          }
+        } catch (err) {
+          console.error('google redirect result error:', err);
+
+          if (mounted) {
+            // If linking an anonymous account failed because the Google
+            // account already exists, sign in to that existing account.
+            if (err?.code === 'auth/credential-already-in-use') {
+              try {
+                const provider = new GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                await signInWithRedirect(auth, provider);
+                return;
+              } catch (redirectErr) {
+                console.error('google fallback redirect error:', redirectErr);
+                setError(readableAuthError(redirectErr));
+              }
+            } else {
+              setError(readableAuthError(err));
+            }
+          }
         }
 
-        try {
-          await signInAnonymously(auth);
-        } catch (err) {
-          console.error('anonymous auth error', err);
+        unsubscribe = onAuthStateChanged(auth, async (current) => {
+          if (!mounted) return;
+
+          if (current) {
+            setUser(current);
+            setReady(true);
+            return;
+          }
+
+          try {
+            await signInAnonymously(auth);
+          } catch (err) {
+            console.error('anonymous auth error', err);
+            if (mounted) {
+              setError(readableAuthError(err));
+              setReady(true);
+            }
+          }
+        });
+      } catch (err) {
+        console.error('firebase auth init error', err);
+        if (mounted) {
           setError(readableAuthError(err));
           setReady(true);
         }
-      });
-    } catch (err) {
-      console.error('firebase auth init error', err);
-      setError(readableAuthError(err));
-      setReady(true);
+      }
     }
 
-    return () => unsubscribe?.();
+    initAuth();
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
   }, []);
 
   async function signInGoogle() {
@@ -77,29 +125,32 @@ export function AuthProvider({ children }) {
 
       const current = auth.currentUser;
 
+      // Prefer linking the anonymous Firebase user so the existing
+      // anonymous user's ReactWA data can remain attached to the account.
       if (current?.isAnonymous) {
         try {
-          const linked = await linkWithPopup(current, provider);
-          setUser(linked.user);
-          return linked.user;
+          await linkWithRedirect(current, provider);
+          return null;
         } catch (err) {
-          // If this Google account already belongs to another Firebase user,
-          // sign in normally instead of silently failing.
-          if (!['auth/credential-already-in-use', 'auth/provider-already-linked'].includes(err?.code)) {
-            throw err;
+          // If the Google account already exists, redirect into that
+          // existing Google account instead.
+          if (err?.code === 'auth/credential-already-in-use' ||
+              err?.code === 'auth/provider-already-linked') {
+            await signInWithRedirect(auth, provider);
+            return null;
           }
+
+          throw err;
         }
       }
 
-      const result = await signInWithPopup(auth, provider);
-      setUser(result.user);
-      return result.user;
+      await signInWithRedirect(auth, provider);
+      return null;
     } catch (err) {
       console.error('google sign-in error:', err);
       setError(readableAuthError(err));
-      return null;
-    } finally {
       setAuthBusy(false);
+      return null;
     }
   }
 
