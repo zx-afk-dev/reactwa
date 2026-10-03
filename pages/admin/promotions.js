@@ -15,6 +15,7 @@ export default function PromotionsAdmin() {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -35,11 +36,13 @@ export default function PromotionsAdmin() {
 
   function openNew() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
+    setModalOpen(true);
   }
 
   function openEdit(item) {
     setEditing(item.id);
+    setModalOpen(true);
     setForm({
       title: item.title, description: item.description, imageUrl: item.imageUrl,
       targetUrl: item.targetUrl, type: item.type, placement: item.placement,
@@ -65,7 +68,7 @@ export default function PromotionsAdmin() {
       });
       const d = await r.json();
       if (!r.ok || !d.success) throw new Error(d.message || 'Gagal menyimpan.');
-      setEditing(null); setForm(emptyForm); await load();
+      setEditing(null); setForm({ ...emptyForm }); setModalOpen(false); await load();
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   }
@@ -93,7 +96,7 @@ export default function PromotionsAdmin() {
     load();
   }
 
-  const editingOpen = editing !== null || form.title !== '';
+  
 
   return (
     <AdminLayout title="Promotions">
@@ -136,8 +139,8 @@ export default function PromotionsAdmin() {
         </section>
       )}
 
-      {editingOpen && (
-        <div className="admin-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && (setEditing(null), setForm(emptyForm))}>
+      {modalOpen && (
+        <div className="admin-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && (setEditing(null), setForm({ ...emptyForm }), setModalOpen(false))}>
           <form className="admin-modal admin-paper" onSubmit={save}>
             <div className="admin-scribble">new promotion card</div>
             <h3>{editing ? 'Edit iklan' : 'Tambah iklan'}</h3>
@@ -154,7 +157,7 @@ export default function PromotionsAdmin() {
               <label>Berakhir<input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} /></label>
             </div>
             <div className="admin-modal-actions">
-              <button type="button" onClick={() => { setEditing(null); setForm(emptyForm); }}>Batal</button>
+              <button type="button" onClick={() => { setEditing(null); setForm({ ...emptyForm }); setModalOpen(false); }}>Batal</button>
               <button type="submit" disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan iklan'}</button>
             </div>
           </form>
