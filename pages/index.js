@@ -51,16 +51,6 @@ export default function Home() {
     return <PublicMaintenance />;
   }
 
-  if (maintenance === null) {
-    return (
-      <Layout>
-        <div className="maintenance-check" aria-label="Memeriksa status layanan">
-          <div className="maintenance-check-paper">Checking service note<span>...</span></div>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <section className="hero">
