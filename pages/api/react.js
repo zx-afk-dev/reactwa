@@ -108,8 +108,9 @@ export default async function handler(req, res) {
     });
   }
 
-  const clientIp = typeof req.body?.visitorIp === 'string' ? req.body.visitorIp.trim() : '';
-  const ip = clientIp || getClientIpFromRequest(req);
+  // Always use the server-observed IP. A visitorIp field from the browser
+  // can be spoofed and must not control the free-coin identity.
+  const ip = getClientIpFromRequest(req);
 
   let captchaValid = false;
   try {
@@ -142,7 +143,11 @@ export default async function handler(req, res) {
   }
 
   const authUser = await verifyRequestUser(req);
-  const identifier = authUser?.uid || hashIp(ip);
+  // Google-authenticated users are account-based. Guests, including
+  // Firebase anonymous sessions, are IP-based so clearing/recreating
+  // anonymous auth cannot reset the free-coin allowance.
+  const isAuthenticatedUser = Boolean(authUser && !authUser.isAnonymous);
+  const identifier = isAuthenticatedUser ? authUser.uid : hashIp(ip);
 
   let currentPlan = 'FREE';
   let reactionCount = 1;
