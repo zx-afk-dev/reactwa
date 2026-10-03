@@ -19,30 +19,34 @@ export default async function handler(req, res) {
   try {
     const authUser = await verifyRequestUser(req);
 
-    if (!authUser || authUser.isAnonymous) {
-      return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Login Google diperlukan sebelum redeem VIP.');
+    const identifier = authUser?.uid;
+    if (!identifier) {
+      return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Sesi belum siap. Muat ulang halaman lalu coba lagi.');
     }
-
-    const identifier = authUser.uid;
     const rl = await checkAndBumpKeyRateLimit('redeemRateLimits', identifier, 10);
     if (!rl.ok) {
       return sendError(res, ERROR_CODES.RATE_LIMIT, 'Terlalu banyak percobaan redeem. Coba lagi sebentar.');
     }
 
     const normalizedCode = code.trim().toUpperCase();
-    const result = await redeemCode(normalizedCode, identifier);
+    const result = await redeemCode(
+      normalizedCode,
+      identifier,
+      Boolean(authUser && !authUser.isAnonymous)
+    );
 
     if (!result.ok) {
       const messages = {
-        INVALID: 'Kode VIP tidak valid.',
-        USED: 'Kode VIP sudah digunakan.',
-        EXPIRED: 'Kode VIP sudah kedaluwarsa.',
+        INVALID: 'Kode redeem tidak valid.',
+        USED: 'Kode redeem sudah digunakan.',
+        EXPIRED: 'Kode redeem sudah kedaluwarsa.',
+        LOGIN_REQUIRED: 'Kode VIP memerlukan login Google. Silakan login terlebih dahulu.',
       };
       return sendError(
         res,
-        ERROR_CODES.VALIDATION_ERROR,
-        messages[result.reason] || 'Kode VIP tidak valid.',
-        { reason: result.reason }
+        result.reason === 'LOGIN_REQUIRED' ? ERROR_CODES.UNAUTHORIZED : ERROR_CODES.VALIDATION_ERROR,
+        messages[result.reason] || 'Kode redeem tidak valid.',
+        { reason: result.reason, type: result.type || null }
       );
     }
 
