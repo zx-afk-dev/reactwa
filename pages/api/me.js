@@ -10,9 +10,11 @@ export default async function handler(req, res) {
 
   try {
     const authUser = await verifyRequestUser(req);
-    const providedIp = typeof req.query?.ip === 'string' ? req.query.ip.trim() : '';
-    const ip = providedIp || getClientIpFromRequest(req);
-    const identifier = authUser?.uid || hashIp(ip);
+    // Never trust an IP supplied by the browser. Guests use the
+    // server-observed IP as their free-tier identity.
+    const ip = getClientIpFromRequest(req);
+    const isAuthenticatedUser = Boolean(authUser && !authUser.isAnonymous);
+    const identifier = isAuthenticatedUser ? authUser.uid : hashIp(ip);
 
     const info = await getOrCreateUser(identifier, authUser ? {
       authUid: authUser.uid,
