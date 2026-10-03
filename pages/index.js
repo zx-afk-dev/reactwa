@@ -9,20 +9,41 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
-    fetch('/api/maintenance', { cache: 'no-store' })
-      .then((response) => response.json())
+    fetch('/api/maintenance', {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+
+        // A failed maintenance check must never leave the homepage stuck
+        // on the loading note. The API can be temporarily unavailable while
+        // Supabase/Vercel is being configured.
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.message || 'Maintenance check unavailable');
+        }
+
+        return data;
+      })
       .then((data) => {
-        if (active && data?.success) {
+        if (active) {
           setMaintenance(data.maintenance || { enabled: false });
         }
       })
       .catch(() => {
-        if (active) setMaintenance({ enabled: false });
-      });
+        if (active) {
+          setMaintenance({ enabled: false });
+        }
+      })
+      .finally(() => clearTimeout(timeout));
 
     return () => {
       active = false;
+      controller.abort();
+      clearTimeout(timeout);
     };
   }, []);
 
