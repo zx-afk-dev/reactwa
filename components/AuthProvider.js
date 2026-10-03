@@ -155,7 +155,7 @@ export function AuthProvider({ children }) {
 
   async function getIdToken() {
     const current = getFirebaseAuth().currentUser;
-    if (!current || current.isAnonymous) return null;
+    if (!current) return null;
     return current.getIdToken();
   }
 
