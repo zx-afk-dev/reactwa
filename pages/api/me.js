@@ -1,7 +1,6 @@
 import { sendSuccess, sendError, ERROR_CODES } from '../../lib/errors';
 import { getClientIpFromRequest, hashIp } from '../../lib/ip';
 import { getOrCreateUser } from '../../lib/coin';
-import { db } from '../../lib/firebaseAdmin';
 import { recordNewUser } from '../../lib/stats';
 import { verifyRequestUser } from '../../lib/userAuth';
 
@@ -14,8 +13,6 @@ export default async function handler(req, res) {
     const ip = providedIp || getClientIpFromRequest(req);
     const identifier = authUser?.uid || hashIp(ip);
 
-    const userRef = db.collection('users').doc(identifier);
-    const before = await userRef.get();
     const info = await getOrCreateUser(identifier, authUser ? {
       authUid: authUser.uid,
       email: authUser.email,
@@ -23,7 +20,7 @@ export default async function handler(req, res) {
       authProvider: authUser.provider,
     } : {});
 
-    if (!before.exists) {
+    if (info.isNew) {
       await recordNewUser(info.plan || 'FREE').catch((err) => {
         console.error('Failed to record new user stat', err);
       });
