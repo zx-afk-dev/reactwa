@@ -23,7 +23,7 @@ export default function AdminLogs() {
   return (
     <AdminLayout title="Logs">
       <section className="admin-page-head">
-        <div><div className="admin-scribble">paper trail / audit notes</div><h2>Activity logs</h2><p>Catatan perubahan admin dan event penting yang tersimpan di Firestore.</p></div>
+        <div><div className="admin-scribble">paper trail / audit notes</div><h2>Activity logs</h2><p>Catatan perubahan admin dan event penting yang tersimpan di Supabase.</p></div>
         <button className="admin-refresh" onClick={load}>↻ Refresh</button>
       </section>
       {error && <div className="admin-error">{error}</div>}
