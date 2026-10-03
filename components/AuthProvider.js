@@ -5,7 +5,6 @@ import {
   onAuthStateChanged,
   signInAnonymously,
   signInWithRedirect,
-  linkWithRedirect,
   signOut,
 } from 'firebase/auth';
 import { getFirebaseAuth } from '../lib/firebaseClient';
@@ -123,25 +122,8 @@ export function AuthProvider({ children }) {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      // Prefer linking the anonymous Firebase user so the existing
-      // anonymous user's ReactWA data can remain attached to the account.
-      if (current?.isAnonymous) {
-        try {
-          await linkWithRedirect(current, provider);
-          return null;
-        } catch (err) {
-          // If the Google account already exists, redirect into that
-          // existing Google account instead.
-          if (err?.code === 'auth/credential-already-in-use' ||
-              err?.code === 'auth/provider-already-linked') {
-            await signInWithRedirect(auth, provider);
-            return null;
-          }
-
-          throw err;
-        }
-      }
-
+      // Use the normal Google redirect flow.
+      // The anonymous callback variable is not available in this function.
       await signInWithRedirect(auth, provider);
       return null;
     } catch (err) {
