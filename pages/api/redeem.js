@@ -2,6 +2,7 @@ import { sendError, sendSuccess, ERROR_CODES } from '../../lib/errors';
 import { checkAndBumpKeyRateLimit } from '../../lib/keys';
 import { redeemCode } from '../../lib/redeem';
 import { verifyRequestUser } from '../../lib/userAuth';
+import { getClientIpFromRequest, hashIp } from '../../lib/ip';
 import { logEvent } from '../../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '2kb' } } };
@@ -19,10 +20,9 @@ export default async function handler(req, res) {
   try {
     const authUser = await verifyRequestUser(req);
 
-    const identifier = authUser?.uid;
-    if (!identifier) {
-      return sendError(res, ERROR_CODES.UNAUTHORIZED, 'Sesi belum siap. Muat ulang halaman lalu coba lagi.');
-    }
+    const ip = getClientIpFromRequest(req);
+    const isAuthenticatedUser = Boolean(authUser && !authUser.isAnonymous);
+    const identifier = isAuthenticatedUser ? authUser.uid : hashIp(ip);
     const rl = await checkAndBumpKeyRateLimit('redeemRateLimits', identifier, 10);
     if (!rl.ok) {
       return sendError(res, ERROR_CODES.RATE_LIMIT, 'Terlalu banyak percobaan redeem. Coba lagi sebentar.');
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const result = await redeemCode(
       normalizedCode,
       identifier,
-      Boolean(authUser && !authUser.isAnonymous)
+      isAuthenticatedUser
     );
 
     if (!result.ok) {
