@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { track } from '@vercel/analytics';
 import { useAuth } from './AuthProvider';
 
@@ -31,6 +31,9 @@ export default function ReactionForm() {
   const [loading, setLoading] = useState(false);
   const [ipLoading, setIpLoading] = useState(true);
   const [result, setResult] = useState(null);
+  const [recaptchaToken, setRecaptchaToken] = useState('');
+  const recaptchaRef = useRef(null);
+  const recaptchaWidgetRef = useRef(null);
 
   const loadProfile = async (ip = visitorIp) => {
     try {
@@ -50,6 +53,50 @@ export default function ReactionForm() {
       }
     } catch {}
   };
+
+  useEffect(() => {
+    let active = true;
+
+    function renderRecaptcha() {
+      if (!active || !recaptchaRef.current || !window.grecaptcha) return;
+      if (recaptchaWidgetRef.current !== null) return;
+
+      recaptchaWidgetRef.current = window.grecaptcha.render(recaptchaRef.current, {
+        sitekey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
+        callback: (token) => setRecaptchaToken(token || ''),
+        'expired-callback': () => setRecaptchaToken(''),
+        'error-callback': () => setRecaptchaToken(''),
+      });
+    }
+
+    if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+      console.error('NEXT_PUBLIC_RECAPTCHA_SITE_KEY is not configured.');
+      return () => {
+        active = false;
+      };
+    }
+
+    if (window.grecaptcha) {
+      window.grecaptcha.ready(renderRecaptcha);
+    } else {
+      const existing = document.querySelector('script[data-reactwa-recaptcha]');
+      if (existing) {
+        existing.addEventListener('load', renderRecaptcha);
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.dataset.reactwaRecaptcha = 'true';
+        script.addEventListener('load', renderRecaptcha);
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -170,6 +217,11 @@ export default function ReactionForm() {
       return;
     }
 
+    if (!recaptchaToken) {
+      setResult({ ok: false, message: 'Centang CAPTCHA terlebih dahulu.' });
+      return;
+    }
+
     if (plan === 'FREE' && coin < cost) {
       setResult({
         ok: false,
@@ -192,10 +244,16 @@ export default function ReactionForm() {
           url: url.trim(),
           emojis,
           visitorIp,
+          recaptchaToken,
         }),
       });
 
       const data = await response.json().catch(() => ({}));
+
+      setRecaptchaToken('');
+      if (window.grecaptcha && recaptchaWidgetRef.current !== null) {
+        window.grecaptcha.reset(recaptchaWidgetRef.current);
+      }
 
       if (!response.ok) {
         if (typeof data.coin === 'number') setCoin(data.coin);
@@ -299,6 +357,10 @@ export default function ReactionForm() {
         >
           + Add
         </button>
+      </div>
+
+      <div className="recaptcha-wrap" aria-label="CAPTCHA">
+        <div ref={recaptchaRef} />
       </div>
 
       {hasCustomSelected && (
