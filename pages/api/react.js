@@ -15,6 +15,35 @@ export const config = {
   },
 };
 
+
+async function verifyRecaptcha(token, ip) {
+  if (!process.env.RECAPTCHA_SECRET_KEY) {
+    throw new Error('RECAPTCHA_SECRET_KEY is not configured.');
+  }
+
+  const body = new URLSearchParams({
+    secret: process.env.RECAPTCHA_SECRET_KEY,
+    response: token,
+  });
+
+  if (ip) body.set('remoteip', ip);
+
+  const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`reCAPTCHA verification HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data?.success === true;
+}
+
 function parseInput(body) {
   const url = typeof body?.url === 'string' ? body.url.trim() : '';
   const reaction = Array.isArray(body?.emojis)
@@ -67,6 +96,41 @@ export default async function handler(req, res) {
   }
 
   const { url, reaction } = parseInput(req.body);
+  const recaptchaToken = typeof req.body?.recaptchaToken === 'string'
+    ? req.body.recaptchaToken.trim()
+    : '';
+
+  if (!recaptchaToken) {
+    return res.status(400).json({
+      success: false,
+      code: 'RECAPTCHA_REQUIRED',
+      message: 'Silakan selesaikan CAPTCHA terlebih dahulu.',
+    });
+  }
+
+  const clientIp = typeof req.body?.visitorIp === 'string' ? req.body.visitorIp.trim() : '';
+  const ip = clientIp || getClientIpFromRequest(req);
+
+  let captchaValid = false;
+  try {
+    captchaValid = await verifyRecaptcha(recaptchaToken, ip);
+  } catch (error) {
+    console.error('[recaptcha]', error?.message || error);
+    return res.status(503).json({
+      success: false,
+      code: 'RECAPTCHA_UNAVAILABLE',
+      message: 'Verifikasi CAPTCHA sedang tidak tersedia. Coba lagi.',
+    });
+  }
+
+  if (!captchaValid) {
+    return res.status(403).json({
+      success: false,
+      code: 'RECAPTCHA_FAILED',
+      message: 'Verifikasi CAPTCHA gagal. Silakan centang CAPTCHA lagi.',
+    });
+  }
+
   const urlCheck = validateWhatsAppChannelUrl(url);
 
   if (!urlCheck.valid) {
@@ -78,8 +142,6 @@ export default async function handler(req, res) {
   }
 
   const authUser = await verifyRequestUser(req);
-  const clientIp = typeof req.body?.visitorIp === 'string' ? req.body.visitorIp.trim() : '';
-  const ip = clientIp || getClientIpFromRequest(req);
   const identifier = authUser?.uid || hashIp(ip);
 
   let currentPlan = 'FREE';
