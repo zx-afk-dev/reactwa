@@ -12,27 +12,23 @@ export default function Redeem() {
 
   async function login() {
     setLoginLoading(true);
-    try {
-      await signInGoogle();
-    } catch {} finally {
-      setLoginLoading(false);
-    }
+    try { await signInGoogle(); } catch {} finally { setLoginLoading(false); }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!code.trim() || !isGoogleUser) return;
+    if (!code.trim() || loading || !ready) return;
     setLoading(true);
 
     try {
       const token = await getIdToken();
-      if (!token) throw new Error('LOGIN_REQUIRED');
+      if (!token) throw new Error('SESSION_REQUIRED');
 
       const resp = await fetch('/api/redeem', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: 'Bearer ' + token,
         },
         body: JSON.stringify({ code: code.trim() }),
       });
@@ -41,14 +37,21 @@ export default function Redeem() {
       if (data.success) {
         setToast({ type: 'success', text: data.message });
         setCode('');
-      } else {
-        setToast({ type: 'error', text: data.message || 'Redeem gagal.' });
+        return;
       }
+
+      const reason = data.reason || data.data?.reason;
+      if (reason === 'LOGIN_REQUIRED') {
+        setToast({ type: 'error', text: 'Kode VIP membutuhkan login Google. Kode belum digunakan.' });
+        return;
+      }
+
+      setToast({ type: 'error', text: data.message || 'Redeem gagal.' });
     } catch (err) {
       setToast({
         type: 'error',
-        text: err?.message === 'LOGIN_REQUIRED'
-          ? 'Login Google diperlukan sebelum redeem.'
+        text: err?.message === 'SESSION_REQUIRED'
+          ? 'Sesi belum siap. Tunggu sebentar lalu coba lagi.'
           : 'Gagal terhubung ke server.',
       });
     } finally {
@@ -63,32 +66,30 @@ export default function Redeem() {
         <div className="scribble">account / redeem note</div>
         <h1>Redeem Coin / VIP</h1>
         <p className="hero-text">
-          Kode VIP terikat ke akun Google agar benefit tidak bergantung pada IP/browser.
-          Setiap VIP key hanya dapat digunakan satu kali.
+          Kode coin bonus bisa diredeem tanpa login. VIP Key membutuhkan login Google
+          agar benefit VIP tersimpan ke akun.
         </p>
 
         <div className="paper-card redeem-auth-card">
           {!ready ? (
-            <p className="muted">Menyiapkan Firebase Authentication…</p>
-          ) : !isGoogleUser ? (
-            <>
-              <h2>Login dulu ✦</h2>
-              <p className="muted">
-                Redeem membutuhkan akun Google. Setelah login, akun akan menjadi identitas
-                tetap untuk menyimpan plan dan coin.
-              </p>
-              <button className="send-button" type="button" onClick={login} disabled={loginLoading}>
-                {loginLoading ? 'Membuka Google…' : 'Masuk dengan Google →'}
-              </button>
-            </>
+            <p className="muted">Menyiapkan sesi…</p>
           ) : (
             <>
               <div className="account-strip">
-                <span className="plan-badge plan-vip">GOOGLE</span>
-                <span className="coin-badge">{user.displayName || user.email || 'Akun Google'}</span>
+                <span className={isGoogleUser ? 'plan-badge plan-vip' : 'plan-badge'}>
+                  {isGoogleUser ? 'GOOGLE' : 'GUEST'}
+                </span>
+                <span className="coin-badge">
+                  {isGoogleUser ? (user?.displayName || user?.email || 'Akun Google') : 'Redeem coin tanpa login'}
+                </span>
               </div>
+
               <h2>Masukkan redeem code ✎</h2>
-              <p className="muted">Code single-use akan langsung diproses setelah berhasil.</p>
+              <p className="muted">
+                Coin code dapat digunakan sebagai guest. Jika kodenya VIP, kamu akan
+                diminta login Google sebelum kode dipakai.
+              </p>
+
               <form onSubmit={handleSubmit}>
                 <input
                   className="paper-input"
@@ -99,10 +100,19 @@ export default function Redeem() {
                   autoComplete="off"
                   required
                 />
-                <button className="send-button" disabled={loading}>
+                <button className="send-button" disabled={loading || !code.trim()}>
                   {loading ? 'Memproses…' : 'Redeem sekarang →'}
                 </button>
               </form>
+
+              {!isGoogleUser && (
+                <div className="redeem-login-note">
+                  <span>VIP Key?</span>
+                  <button type="button" className="nav-auth-button google" onClick={login} disabled={loginLoading}>
+                    {loginLoading ? 'Membuka Google…' : 'Login Google'}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
