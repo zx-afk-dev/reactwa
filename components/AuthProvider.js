@@ -123,8 +123,6 @@ export function AuthProvider({ children }) {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      const current = auth.currentUser;
-
       // Prefer linking the anonymous Firebase user so the existing
       // anonymous user's ReactWA data can remain attached to the account.
       if (current?.isAnonymous) {
