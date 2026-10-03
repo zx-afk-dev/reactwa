@@ -3,6 +3,7 @@ import { getClientIpFromRequest, hashIp } from '../../lib/ip';
 import { getOrCreateUser } from '../../lib/coin';
 import { recordNewUser } from '../../lib/stats';
 import { verifyRequestUser } from '../../lib/userAuth';
+import { logEvent } from '../../lib/logger';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return sendError(res, ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed');
@@ -23,6 +24,12 @@ export default async function handler(req, res) {
     if (info.isNew) {
       await recordNewUser(info.plan || 'FREE').catch((err) => {
         console.error('Failed to record new user stat', err);
+      });
+      await logEvent('user_created', 'Profil user baru dibuat.', {
+        uid: identifier,
+        email: authUser?.email || null,
+        authProvider: authUser?.provider || 'anonymous',
+        plan: info.plan || 'FREE',
       });
     }
 
