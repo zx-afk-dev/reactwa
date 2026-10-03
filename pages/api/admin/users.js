@@ -6,6 +6,9 @@ import { logEvent } from '../../../lib/logger';
 function clean(row){
   return {
     identifier: row.firebase_uid,
+    email: row.email || null,
+    displayName: row.display_name || null,
+    authProvider: row.auth_provider || null,
     plan: row.plan === 'DEV' ? 'VIP' : (row.plan || 'FREE'),
     coin: Number(row.coin || 0),
     suspended: Boolean(row.suspended),
