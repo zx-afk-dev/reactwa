@@ -29,7 +29,6 @@ export default function ReactionForm() {
   const [lastCoinReset, setLastCoinReset] = useState(null);
   const [resetIn, setResetIn] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [ipLoading, setIpLoading] = useState(true);
   const [result, setResult] = useState(null);
   const [recaptchaToken, setRecaptchaToken] = useState('');
   const [recaptchaReady, setRecaptchaReady] = useState(false);
@@ -92,22 +91,13 @@ export default function ReactionForm() {
 
     async function loadInitialProfile() {
       try {
-        const ipResponse = await fetch('https://api.ipify.org/?format=json');
-        const ipData = await ipResponse.json();
-        const ip = typeof ipData?.ip === 'string' ? ipData.ip.trim() : '';
-
-        if (!ip) throw new Error('IP tidak ditemukan.');
-        if (!active) return;
-
-
+        // The server derives the guest identity from the request IP.
+        // Do not call a third-party IP echo service from the browser.
         const token = await getIdToken();
-        const profileResponse = await fetch(
-          '/api/me',
-          {
-            cache: 'no-store',
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          }
-        );
+        const profileResponse = await fetch('/api/me', {
+          cache: 'no-store',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const profile = await profileResponse.json();
 
         if (active && profile.success) {
@@ -115,24 +105,7 @@ export default function ReactionForm() {
           setCoin(Number(profile.coin || 0));
           setLastCoinReset(profile.lastCoinReset ? Number(profile.lastCoinReset) : null);
         }
-      } catch {
-        try {
-          const token = await getIdToken();
-          const profileResponse = await fetch('/api/me', {
-            cache: 'no-store',
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          });
-          const profile = await profileResponse.json();
-
-          if (active && profile.success) {
-            setPlan(profile.plan || 'FREE');
-            setCoin(Number(profile.coin || 0));
-            setLastCoinReset(profile.lastCoinReset ? Number(profile.lastCoinReset) : null);
-          }
-        } catch {}
-      } finally {
-        if (active) setIpLoading(false);
-      }
+      } catch {}
     }
 
     if (authReady) loadInitialProfile();
@@ -295,7 +268,7 @@ export default function ReactionForm() {
       if (data.code === 'QUEUED' && data.requestId) {
         setResult({
           ok: true,
-          message: 'Request masuk antrean. Menunggu worker...',
+          message: 'Request masuk antrean. Sedang diproses worker...',
           data,
         });
 
@@ -361,7 +334,6 @@ export default function ReactionForm() {
         {plan === 'FREE' && resetIn !== null && (
           <span className="coin-reset-badge">↻ reset {formatRemaining(resetIn)}</span>
         )}
-        {ipLoading && <span className="ip-status">checking IP…</span>}
       </div>
 
       <h2>Leave a little reaction ✎</h2>
@@ -448,7 +420,7 @@ export default function ReactionForm() {
         </div>
       )}
 
-      <button className="send-button" type="submit" disabled={loading || ipLoading}>
+      <button className="send-button" type="submit" disabled={loading}>
         {loading ? (
           <>
             <span className="spinner" /> Mengirim...
