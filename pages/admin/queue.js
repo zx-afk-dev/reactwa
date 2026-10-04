@@ -21,7 +21,7 @@ export default function AdminQueue() {
     setMessage('');
 
     try {
-      const resp = await fetch('/api/admin/queue/process', {
+      const resp = await fetch('/api/admin/queue', {
         method: 'POST',
         headers: { Accept: 'application/json' },
       });
