@@ -24,7 +24,6 @@ export default function ReactionForm() {
   const [url, setUrl] = useState('');
   const [emojis, setEmojis] = useState(['🥳', '👍']);
   const [customEmoji, setCustomEmoji] = useState('');
-  const [visitorIp, setVisitorIp] = useState('');
   const [plan, setPlan] = useState('FREE');
   const [coin, setCoin] = useState(0);
   const [lastCoinReset, setLastCoinReset] = useState(null);
@@ -37,15 +36,11 @@ export default function ReactionForm() {
   const recaptchaRef = useRef(null);
   const recaptchaWidgetRef = useRef(null);
 
-  const loadProfile = async (ip = visitorIp) => {
+  const loadProfile = async () => {
     try {
       const token = await getIdToken();
-      const endpoint = ip
-        ? `/api/me?ip=${encodeURIComponent(ip)}`
-        : '/api/me';
-
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const profileResponse = await fetch(endpoint, { cache: 'no-store', headers });
+      const profileResponse = await fetch('/api/me', { cache: 'no-store', headers });
       const profile = await profileResponse.json();
 
       if (profile.success) {
@@ -104,11 +99,10 @@ export default function ReactionForm() {
         if (!ip) throw new Error('IP tidak ditemukan.');
         if (!active) return;
 
-        setVisitorIp(ip);
 
         const token = await getIdToken();
         const profileResponse = await fetch(
-          `/api/me?ip=${encodeURIComponent(ip)}`,
+          '/api/me',
           {
             cache: 'no-store',
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -197,6 +191,44 @@ export default function ReactionForm() {
     setCustomEmoji('');
   }
 
+  async function waitForQueue(requestId, token) {
+    const started = Date.now();
+    while (Date.now() - started < 90000) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const response = await fetch(
+        `/api/reaction-status?id=${encodeURIComponent(requestId)}`,
+        {
+          cache: 'no-store',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || 'Gagal membaca status antrean.');
+      }
+
+      if (data.status === 'success') {
+        return { ok: true, data };
+      }
+
+      if (data.status === 'failed') {
+        return {
+          ok: false,
+          data,
+          message: data.errorMessage || 'Reaction gagal diproses.',
+        };
+      }
+    }
+
+    return {
+      ok: false,
+      timeout: true,
+      message: 'Antrean masih diproses. Silakan cek kembali beberapa saat lagi.',
+    };
+  }
+
   async function submit(event) {
     event.preventDefault();
     setResult(null);
@@ -237,7 +269,6 @@ export default function ReactionForm() {
         body: JSON.stringify({
           url: url.trim(),
           emojis,
-          visitorIp,
           recaptchaToken,
         }),
       });
@@ -260,7 +291,37 @@ export default function ReactionForm() {
       }
 
       if (typeof data.coin === 'number') setCoin(data.coin);
-      if (data.lastCoinReset) setLastCoinReset(Number(data.lastCoinReset));
+
+      if (data.code === 'QUEUED' && data.requestId) {
+        setResult({
+          ok: true,
+          message: 'Request masuk antrean. Menunggu worker...',
+          data,
+        });
+
+        const queuedResult = await waitForQueue(data.requestId, token);
+
+        if (queuedResult.data?.status === 'success') {
+          track('Reaction Sent', {
+            plan: data.plan || plan,
+            customEmoji: Boolean(data.customEmoji),
+          });
+          await loadProfile();
+          setResult({
+            ok: true,
+            message: queuedResult.data?.result?.message || 'Reaction berhasil dikirim.',
+            data: { ...data, queue: queuedResult.data },
+          });
+        } else {
+          await loadProfile();
+          setResult({
+            ok: false,
+            message: queuedResult.message || queuedResult.data?.errorMessage || 'Reaction gagal diproses.',
+            data: { ...data, queue: queuedResult.data },
+          });
+        }
+        return;
+      }
 
       track('Reaction Sent', {
         plan: data.plan || plan,
@@ -305,7 +366,7 @@ export default function ReactionForm() {
 
       <h2>Leave a little reaction ✎</h2>
       <p className="muted">
-        Request dikirim langsung ke reaction service. Free memakai coin;
+        Request masuk antrean global sebelum diteruskan ke reaction service. Free memakai coin;
         VIP tidak mengurangi coin.
       </p>
 
