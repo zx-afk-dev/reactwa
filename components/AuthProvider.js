@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInAnonymously,
   signInWithRedirect,
+  signInWithPopup,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -119,10 +120,34 @@ export function AuthProvider({ children }) {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      // Use the normal Google redirect flow.
-      // The anonymous callback variable is not available in this function.
-      await signInWithRedirect(auth, provider);
-      return null;
+      // Prefer popup so the result is available immediately in the same
+      // browser session. If the browser blocks popups, fall back to redirect.
+      try {
+        const result = await signInWithPopup(auth, provider);
+        if (result?.user) {
+          setUser(result.user);
+          setError('');
+        }
+        setAuthBusy(false);
+        return result?.user || null;
+      } catch (err) {
+        console.warn('google popup sign-in failed:', err);
+
+        const fallbackCodes = new Set([
+          'auth/popup-blocked',
+          'auth/popup-timeout',
+          'auth/cancelled-popup-request',
+          'auth/web-storage-unsupported',
+        ]);
+
+        if (!fallbackCodes.has(err?.code)) {
+          throw err;
+        }
+
+        // Popup is unavailable on this browser; use redirect as fallback.
+        await signInWithRedirect(auth, provider);
+        return null;
+      }
     } catch (err) {
       console.error('google sign-in error:', err);
       setError(readableAuthError(err));
