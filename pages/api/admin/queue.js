@@ -19,7 +19,7 @@ export default withAdminAuth(async (req, res) => {
         countStatus('processing'),
         supabaseSelect(
           'reaction_queue',
-          'select=request_id,plan,status,created_at,finished_at,attempts,error_code&order=created_at.desc&limit=50'
+          'select=request_id,plan,status,created_at,finished_at,attempts,error_code,next_retry_at&order=created_at.desc&limit=50'
         ),
         supabaseSelect(
           'reaction_worker_heartbeats',
