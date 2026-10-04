@@ -59,7 +59,7 @@ export default function Home() {
           <h1>React like you<br /><span>left a note.</span></h1>
           <p className="hero-text">
             A tiny handmade corner for sending reactions to WhatsApp Channel posts.
-            Request divalidasi lalu langsung dikirim ke reaction service.
+            Request divalidasi, masuk antrean, lalu diproses worker.
           </p>
           <div className="stamp">DIRECT<br /><b>SEND</b></div>
         </div>
@@ -76,8 +76,8 @@ export default function Home() {
             <ol>
               <li>Request masuk ke server kita.</li>
               <li>Server memvalidasi URL dan reaction.</li>
-              <li>Server meneruskan request ke reaction service.</li>
-              <li>Response dikembalikan langsung.</li>
+              <li>Request masuk antrean global.</li>
+              <li>Worker meneruskan ke reaction service.</li>
             </ol>
           </article>
 
@@ -85,8 +85,8 @@ export default function Home() {
             <span className="tape tape-red" aria-hidden="true" />
             <h3>Less machinery</h3>
             <p>
-              Tidak ada antrean global, worker, polling status, atau Firebase
-              Realtime Database yang dibutuhkan untuk mengirim reaction.
+              Request diproses lewat antrean global agar traffic lebih stabil.
+              Status request bisa dipantau sampai selesai.
             </p>
             <span className="hand-sign">— archive keeper</span>
           </article>
@@ -97,7 +97,7 @@ export default function Home() {
 
       <section className="tiny-archive">
         <span className="archive-line" />
-        <div><b>ARCHIVE NOTE</b><p>Paper outside. Direct send inside.</p></div>
+        <div><b>ARCHIVE NOTE</b><p>Paper outside. Queue inside. Results tracked.</p></div>
         <span className="archive-line" />
       </section>
     </Layout>
