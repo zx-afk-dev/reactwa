@@ -77,6 +77,24 @@ export default function AdminQueue() {
         <StatCard label="Lock" value={data.lock ? 'Terkunci' : 'Bebas'} />
       </div>
       <div className="card">
+        <h3>Worker Health</h3>
+        {data.workers?.length ? (
+          <DataTable
+            columns={[
+              { key: 'worker_id', label: 'Worker' },
+              { key: 'last_seen_at', label: 'Last Seen' },
+              { key: 'last_processed', label: 'Processed' },
+              { key: 'healthy', label: 'Health', render: (value) => value ? 'Healthy' : 'Stale' },
+              { key: 'last_error', label: 'Last Error' },
+            ]}
+            rows={data.workers}
+          />
+        ) : (
+          <p className="muted">Belum ada heartbeat worker.</p>
+        )}
+      </div>
+
+      <div className="card">
         <h3>Riwayat Terbaru</h3>
         <DataTable
           columns={[
