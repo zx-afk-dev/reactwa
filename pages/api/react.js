@@ -6,6 +6,7 @@ import { recordNewUser, recordStat } from '../../lib/stats';
 import { verifyRequestUser } from '../../lib/userAuth';
 import { logEvent } from '../../lib/logger';
 import { rewardReferralReaction } from '../../lib/referral';
+import { enqueueReaction } from '../../lib/reactionQueue';
 
 const UPSTREAM_URL = process.env.REACTION_API_URL || 'https://react.zfile.web.id/api/send-reaction';
 
@@ -51,38 +52,6 @@ function parseInput(body) {
     : String(body?.emojis || '').split(',').map((x) => x.trim()).filter(Boolean);
 
   return { url, reaction };
-}
-
-async function sendUpstream(url, emojis) {
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    Number(process.env.UPSTREAM_TIMEOUT || 10000)
-  );
-
-  try {
-    const response = await fetch(UPSTREAM_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'ReactionWA-Proxy/3.0',
-      },
-      body: JSON.stringify({
-        url,
-        emojis: emojis.join(','),
-      }),
-      signal: controller.signal,
-    });
-
-    const data = await response.json().catch(() => ({
-      success: false,
-      message: 'Response upstream tidak valid.',
-    }));
-
-    return { response, data };
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 export default async function handler(req, res) {
@@ -225,41 +194,32 @@ export default async function handler(req, res) {
       remainingCoin = Number(spend.coin || 0);
     }
 
-    const { response, data } = await sendUpstream(urlCheck.url, reactionCheck.list);
-
-    if (!response.ok || data?.success === false) {
-      if (spent) await refundCoin(identifier, spent).catch(() => {});
-      await recordStat({ plan, success: false, reactionCount: reactionCheck.list.length }).catch(() => {});
-
-      return res.status(response.status >= 400 ? response.status : 502).json({
-        success: false,
-        code: 'UPSTREAM_ERROR',
-        message: data?.message || 'Reaction service gagal memproses request.',
+    let queued;
+    try {
+      queued = await enqueueReaction({
+        firebaseUid: identifier,
+        plan,
+        url: urlCheck.url,
+        emojis: reactionCheck.list,
+        cost: spent,
       });
+    } catch (queueError) {
+      if (spent) await refundCoin(identifier, spent).catch(() => {});
+      throw queueError;
     }
 
-    await recordStat({ plan, success: true, reactionCount: reactionCheck.list.length }).catch((err) => {
-      console.error('reaction stat error', err);
-    });
-
-    await logEvent('reaction_sent', 'Reaction berhasil dikirim.', { plan, reactionCount }).catch(() => {});
-
-    if (authUser?.uid) {
-      await rewardReferralReaction(authUser.uid).catch((err) => console.error('referral reaction reward', err));
-    }
-
-        return res.status(200).json({
+    return res.status(202).json({
       success: true,
-      code: 'SENT',
-      message: plan === 'VIP' ? 'Reaction VIP berhasil dikirim.' : 'Reaction berhasil dikirim.',
+      code: 'QUEUED',
+      message: plan === 'VIP'
+        ? 'Reaction masuk antrean VIP.'
+        : 'Reaction masuk antrean. Coin sudah dicadangkan.',
+      requestId: queued.requestId,
+      status: 'waiting',
       plan,
       coin: remainingCoin,
       cost: spent,
       customEmoji: reactionCheck.hasCustom,
-      data: {
-        success: Boolean(data?.success),
-        message: typeof data?.message === 'string' ? data.message : null,
-      },
     });
   } catch (error) {
     const timeout = error?.name === 'AbortError';
