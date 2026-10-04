@@ -14,16 +14,32 @@ async function countStatus(status) {
 export default withAdminAuth(async (req, res) => {
   try {
     if (req.method === 'GET') {
-      const [waiting, processing, recent] = await Promise.all([
+      const [waiting, processing, recent, workers] = await Promise.all([
         countStatus('waiting'),
         countStatus('processing'),
         supabaseSelect(
           'reaction_queue',
-          'select=request_id,plan,status,created_at,finished_at&order=created_at.desc&limit=50'
+          'select=request_id,plan,status,created_at,finished_at,attempts,error_code&order=created_at.desc&limit=50'
+        ),
+        supabaseSelect(
+          'reaction_worker_heartbeats',
+          'select=worker_id,last_seen_at,last_started_at,last_finished_at,last_processed,last_error&order=last_seen_at.desc&limit=20'
         ),
       ]);
 
-      return sendSuccess(res, { waiting, processing, lock: processing > 0, recent: recent || [] });
+      const now = Date.now();
+      const workerHealth = (workers || []).map((worker) => ({
+        ...worker,
+        healthy: now - new Date(worker.last_seen_at).getTime() < 10 * 60 * 1000,
+      }));
+
+      return sendSuccess(res, {
+        waiting,
+        processing,
+        lock: processing > 0,
+        recent: recent || [],
+        workers: workerHealth,
+      });
     }
 
     if (req.method === 'POST') {
