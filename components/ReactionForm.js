@@ -233,18 +233,50 @@ export default function ReactionForm() {
 
     try {
       const token = await getIdToken();
-      const response = await fetch('/api/react', {
+      const requestId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      const requestBody = JSON.stringify({
+        requestId,
+        url: url.trim(),
+        emojis,
+        recaptchaToken,
+      });
+
+      const requestOptions = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          url: url.trim(),
-          emojis,
-          recaptchaToken,
-        }),
-      });
+        body: requestBody,
+      };
+
+      let response;
+
+      try {
+        response = await fetch('/api/react', requestOptions);
+      } catch (networkError) {
+        // The server may have accepted the request even when the browser
+        // lost the HTTP response. Check the idempotent request first.
+        const statusResponse = await fetch(
+          `/api/reaction-status?id=${encodeURIComponent(requestId)}`,
+          {
+            cache: 'no-store',
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
+        ).catch(() => null);
+
+        if (statusResponse?.ok) {
+          response = statusResponse;
+        } else {
+          // Safe retry: the same requestId can never charge the same request
+          // twice because the server handles idempotency atomically.
+          response = await fetch('/api/react', requestOptions);
+        }
+      }
 
       const data = await response.json().catch(() => ({}));
 
