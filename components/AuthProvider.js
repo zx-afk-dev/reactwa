@@ -6,6 +6,8 @@ import {
   signInAnonymously,
   signInWithRedirect,
   signOut,
+  setPersistence,
+  browserLocalPersistence,
 } from 'firebase/auth';
 import { getFirebaseAuth } from '../lib/firebaseClient';
 
@@ -44,6 +46,10 @@ export function AuthProvider({ children }) {
       try {
         const auth = getFirebaseAuth();
 
+        // Keep Google sessions after refresh/reopen. This is also important
+        // after the redirect-based Google OAuth flow on mobile.
+        await setPersistence(auth, browserLocalPersistence);
+
         // Handle the Google redirect result first.
         // This replaces popup-based authentication and works better on mobile.
         try {
@@ -57,21 +63,12 @@ export function AuthProvider({ children }) {
           console.error('google redirect result error:', err);
 
           if (mounted) {
+            // If a redirect is rejected, surface the real Firebase error.
+            // Do not start another redirect here: doing so can create a
+            // redirect loop on mobile when the Firebase domain is wrong.
             // If linking an anonymous account failed because the Google
             // account already exists, sign in to that existing account.
-            if (err?.code === 'auth/credential-already-in-use') {
-              try {
-                const provider = new GoogleAuthProvider();
-                provider.setCustomParameters({ prompt: 'select_account' });
-                await signInWithRedirect(auth, provider);
-                return;
-              } catch (redirectErr) {
-                console.error('google fallback redirect error:', redirectErr);
-                setError(readableAuthError(redirectErr));
-              }
-            } else {
-              setError(readableAuthError(err));
-            }
+            setError(readableAuthError(err));
           }
         }
 
