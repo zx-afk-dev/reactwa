@@ -34,6 +34,7 @@ export default async function handler(req, res) {
         await processReactionQueue({
           limit: 1,
           worker: `status-${requestId.slice(0, 12)}`,
+          requestId,
         });
         status = await getReactionStatus(requestId, identifier) || status;
       } catch (workerError) {
