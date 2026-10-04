@@ -87,9 +87,9 @@ export default function AdminDashboard() {
       </section>
 
       <div className="admin-note-row">
-        <div className="admin-note blue">Server validates first.<br /><b>Then direct upstream.</b></div>
+        <div className="admin-note blue">Server validates first.<br /><b>Then queue + worker.</b></div>
         <div className="admin-note yellow">Coin is billed by plan.<br /><b>Custom emoji = 2 coins.</b></div>
-        <div className="admin-note red">No global queue.<br /><b>No polling worker.</b></div>
+        <div className="admin-note red">Global queue is active.<br /><b>Worker processes requests.</b></div>
       </div>
     </AdminLayout>
   );
