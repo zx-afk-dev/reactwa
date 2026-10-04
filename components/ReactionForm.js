@@ -297,6 +297,36 @@ export default function ReactionForm() {
 
       if (typeof data.coin === 'number') setCoin(data.coin);
 
+      // /api/reaction-status is also a valid recovery response after a
+      // lost POST response. Normalize it into the same queue flow.
+      if (data.requestId === requestId && data.status === 'failed') {
+        await loadProfile();
+        setResult({
+          ok: false,
+          message: data.errorMessage || data.message || 'Reaction gagal diproses.',
+          data,
+        });
+        return;
+      }
+
+      if (data.requestId === requestId && data.status === 'success') {
+        track('Reaction Sent', {
+          plan: data.plan || plan,
+          customEmoji: Boolean(data.customEmoji),
+        });
+        await loadProfile();
+        setResult({
+          ok: true,
+          message: data.result?.message || data.message || 'Reaction berhasil dikirim.',
+          data,
+        });
+        return;
+      }
+
+      if (data.status === 'waiting' || data.status === 'processing') {
+        data.code = 'QUEUED';
+      }
+
       if (data.code === 'QUEUED' && data.requestId) {
         setResult({
           ok: true,
