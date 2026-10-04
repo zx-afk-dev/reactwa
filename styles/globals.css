@@ -301,3 +301,126 @@ body{margin:0;color:var(--ink);font-family:'DM Sans',sans-serif;background:#ddd2
   .admin-promo-row .admin-actions{width:100%}
   .admin-form-grid{grid-template-columns:1fr}
 }
+
+
+/* ===== Admin logs filters ===== */
+.admin-log-toolbar{
+  background:#fffaf0;
+  border:1px solid rgba(80,60,30,.1);
+  box-shadow:4px 5px 0 rgba(50,40,25,.07);
+  padding:14px;
+  margin-bottom:18px;
+  display:grid;
+  gap:12px;
+}
+.admin-log-filters{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+}
+.admin-log-filter{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px dashed #aaa08d;
+  background:#fffdf6;
+  color:var(--ink);
+  padding:8px 10px;
+  border-radius:6px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.admin-log-filter span{
+  width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#eee5d2;
+  font-size:10px;
+}
+.admin-log-filter b{
+  min-width:18px;
+  text-align:center;
+  padding:2px 5px;
+  border-radius:999px;
+  background:#eee5d2;
+  font-size:9px;
+}
+.admin-log-filter:hover{background:#eee3ce}
+.admin-log-filter.active{
+  background:var(--ink);
+  color:#fff8ed;
+  border-color:var(--ink);
+  transform:translateY(-1px);
+}
+.admin-log-filter.active span,
+.admin-log-filter.active b{background:#fff8ed;color:var(--ink)}
+.admin-log-filter.success.active{background:#56724d}
+.admin-log-filter.error.active{background:var(--red)}
+.admin-log-filter.auth.active{background:var(--blue)}
+.admin-log-filter.admin.active{background:#765f25}
+
+.admin-log-search{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border-bottom:2px solid #aaa08d;
+}
+.admin-log-search>span{
+  font-size:20px;
+  color:var(--muted);
+}
+.admin-log-search input{
+  flex:1;
+  min-width:0;
+  border:0;
+  background:transparent;
+  outline:0;
+  padding:9px 2px;
+  font:13px 'DM Sans';
+  color:var(--ink);
+}
+.admin-log-search button{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font-size:20px;
+  cursor:pointer;
+}
+.admin-log-summary{
+  color:var(--muted);
+  font-size:11px;
+}
+.admin-log-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+.admin-log-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 7px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+.admin-log-badge.success{background:#e4efdf;color:#45613e}
+.admin-log-badge.error{background:#f3deda;color:#8f3030}
+.admin-log-badge.info{background:#eee6d5;color:#665d4e}
+.admin-log-badge.auth{background:#dce9e8;color:#315d78}
+.admin-log-badge.admin{background:#f5e7a8;color:#6b4f00}
+.admin-log-card.category-error{border-left:4px solid var(--red)}
+.admin-log-card.category-success{border-left:4px solid #56724d}
+.admin-log-card.category-auth{border-left:4px solid var(--blue)}
+.admin-log-card.category-admin{border-left:4px solid #c3a94e}
+@media(max-width:600px){
+  .admin-log-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .admin-log-filter{justify-content:space-between}
+  .admin-log-head{align-items:flex-start;flex-direction:column;gap:7px}
+  .admin-log-head time{font-size:9px}
+}
