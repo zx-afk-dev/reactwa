@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Layout from '../components/Layout';
+import Layout from '../../components/Layout';
 import { useAuth } from '../components/AuthProvider';
 
 export default function VipApiKeys() {
