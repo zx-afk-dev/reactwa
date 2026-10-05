@@ -12,6 +12,7 @@ import {
   rewardReactionAbuseRecovery,
 } from '../../lib/keys';
 import { logEvent } from '../../lib/logger';
+import { useApiKey } from '../../lib/apiKeys';
 import {
   enqueueReaction,
   getReactionStatus,
@@ -104,12 +105,45 @@ export default async function handler(req, res) {
   }
 
   const ip = getClientIpFromRequest(req);
-  const authUser = await verifyRequestUser(req);
-  const isAuthenticatedUser = Boolean(authUser && !authUser.isAnonymous);
-  const identifier = isAuthenticatedUser ? authUser.uid : hashIp(ip);
-  const rateLimitIdentity = isAuthenticatedUser
-    ? 'uid:' + authUser.uid
-    : 'ip:' + identifier;
+  const suppliedApiKey =
+    typeof req.headers['x-api-key'] === 'string'
+      ? req.headers['x-api-key'].trim()
+      : (() => {
+          const header = String(req.headers.authorization || '');
+          return /^Bearer\s+rw_live_/i.test(header)
+            ? header.replace(/^Bearer\s+/i, '').trim()
+            : '';
+        })();
+
+  const apiKeyUser = suppliedApiKey
+    ? await useApiKey(suppliedApiKey).catch((error) => {
+        console.error('[reaction-api-key]', error);
+        return null;
+      })
+    : null;
+
+  if (suppliedApiKey && !apiKeyUser) {
+    return res.status(401).json({
+      success: false,
+      code: 'INVALID_API_KEY',
+      message: 'API Key tidak valid, sudah dicabut, atau akun bukan VIP.',
+    });
+  }
+
+  const authUser = apiKeyUser ? null : await verifyRequestUser(req);
+  const isAuthenticatedUser = Boolean(
+    (authUser && !authUser.isAnonymous) || apiKeyUser
+  );
+  const identifier = apiKeyUser
+    ? apiKeyUser.firebaseUid
+    : isAuthenticatedUser
+      ? authUser.uid
+      : hashIp(ip);
+  const rateLimitIdentity = apiKeyUser
+    ? 'api:' + apiKeyUser.id
+    : isAuthenticatedUser
+      ? 'uid:' + authUser.uid
+      : 'ip:' + identifier;
 
   // Abuse detection runs before CAPTCHA/rate-limit work so identities that
   // repeatedly trigger suspicious behavior are temporarily blocked.
@@ -168,7 +202,7 @@ export default async function handler(req, res) {
       ? req.body.recaptchaToken.trim()
       : '';
 
-  if (!recaptchaToken) {
+  if (!apiKeyUser && !recaptchaToken) {
     await recordReactionAbuse(rateLimitIdentity, 'captcha_failed').catch(() => {});
     return res.status(400).json({
       success: false,
@@ -177,9 +211,11 @@ export default async function handler(req, res) {
     });
   }
 
-  let captchaValid = false;
+  let captchaValid = Boolean(apiKeyUser);
   try {
-    captchaValid = await verifyRecaptcha(recaptchaToken, ip);
+    captchaValid = apiKeyUser
+      ? true
+      : await verifyRecaptcha(recaptchaToken, ip);
   } catch (error) {
     console.error('[recaptcha]', error?.message || error);
     return res.status(503).json({
@@ -202,10 +238,12 @@ export default async function handler(req, res) {
   // application quota before passing the bot challenge. The identity is either
   // a verified Firebase UID or a server-derived hashed IP; no raw IP is stored.
   try {
-    const rateLimit = await checkReactionRateLimit(rateLimitIdentity, {
-      perMinute: 10,
-      perHour: 100,
-    });
+    const rateLimit = await checkReactionRateLimit(
+      rateLimitIdentity,
+      apiKeyUser
+        ? { perMinute: 30, perHour: 1000 }
+        : { perMinute: 10, perHour: 100 }
+    );
 
     if (!rateLimit.ok) {
       const retryAfter = Math.max(1, Number(rateLimit.retryAfter || 60));
