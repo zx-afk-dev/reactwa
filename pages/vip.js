@@ -63,6 +63,9 @@ export default function VipDashboard() {
             <Link className="custom-add-button" href="/">
               ⚡ Kirim Reaction
             </Link>
+            <Link className="custom-add-button" href="/vip/api-analytics">
+              📊 API Analytics
+            </Link>
           </div>
         </div>
 
