@@ -8,6 +8,7 @@ const MENU = [
   { href: '/referral', label: 'Undang Teman', icon: '↗' },
   { href: '/docs', label: 'Docs', icon: '✎' },
   { href: '/reactions', label: 'VIP History', icon: '♾️' },
+  { href: '/vip', label: 'VIP Dashboard', icon: '💎' },
   { href: '/changelog', label: 'Changelog', icon: '⌁' },
 ];
 
