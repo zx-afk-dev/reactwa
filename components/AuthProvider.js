@@ -38,6 +38,7 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
+  const [isVip, setIsVip] = useState(false);
 
   useEffect(() => {
     let unsubscribe;
@@ -108,6 +109,39 @@ export function AuthProvider({ children }) {
       unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVipStatus() {
+      if (!user || user.isAnonymous) {
+        setIsVip(false);
+        return;
+      }
+
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('/api/me', {
+          cache: 'no-store',
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!cancelled) {
+          setIsVip(Boolean(data?.data?.plan === 'VIP' || data?.plan === 'VIP'));
+        }
+      } catch (err) {
+        console.error('VIP status check error:', err);
+        if (!cancelled) setIsVip(false);
+      }
+    }
+
+    loadVipStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   async function signInGoogle() {
     if (authBusy) return null;
@@ -187,10 +221,11 @@ export function AuthProvider({ children }) {
     error,
     authBusy,
     isGoogleUser: Boolean(user && !user.isAnonymous),
+    isVip,
     signInGoogle,
     logout,
     getIdToken,
-  }), [user, ready, error, authBusy]);
+  }), [user, ready, error, authBusy, isVip]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
