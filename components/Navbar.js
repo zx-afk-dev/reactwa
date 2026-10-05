@@ -10,6 +10,7 @@ const MENU = [
   { href: '/reactions', label: 'VIP History', icon: '♾️' },
   { href: '/vip', label: 'VIP Dashboard', icon: '💎' },
   { href: '/vip/api-keys', label: 'VIP API Keys', icon: '🔑' },
+  { href: '/vip/api-analytics', label: 'API Analytics', icon: '📊' },
   { href: '/changelog', label: 'Changelog', icon: '⌁' },
 ];
 
