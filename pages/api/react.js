@@ -5,6 +5,7 @@ import { getOrCreateUser, peekUser } from '../../lib/coin';
 import { getSettings } from '../../lib/settings';
 import { recordNewUser, recordStat } from '../../lib/stats';
 import { verifyRequestUser } from '../../lib/userAuth';
+import { checkReactionRateLimit } from '../../lib/keys';
 import { logEvent } from '../../lib/logger';
 import {
   enqueueReaction,
@@ -160,6 +161,56 @@ export default async function handler(req, res) {
       success: false,
       code: 'RECAPTCHA_FAILED',
       message: 'Verifikasi CAPTCHA gagal. Silakan centang CAPTCHA lagi.',
+    });
+  }
+
+  // Rate limit after CAPTCHA so invalid/automated requests cannot consume the
+  // application quota before passing the bot challenge. The identity is either
+  // a verified Firebase UID or a server-derived hashed IP; no raw IP is stored.
+  const rateLimitIdentity = isAuthenticatedUser
+    ? 'uid:' + authUser.uid
+    : 'ip:' + identifier;
+
+  try {
+    const rateLimit = await checkReactionRateLimit(rateLimitIdentity, {
+      perMinute: 10,
+      perHour: 100,
+    });
+
+    if (!rateLimit.ok) {
+      const retryAfter = Math.max(1, Number(rateLimit.retryAfter || 60));
+      res.setHeader('Retry-After', String(retryAfter));
+      res.setHeader('X-RateLimit-Limit-Minute', '10');
+      res.setHeader('X-RateLimit-Limit-Hour', '100');
+
+      console.warn('[reaction-rate-limit]', {
+        reason: rateLimit.reason,
+        retryAfter,
+        authenticated: isAuthenticatedUser,
+      });
+
+      return res.status(429).json({
+        success: false,
+        code: 'RATE_LIMITED',
+        reason: rateLimit.reason,
+        message:
+          rateLimit.reason === 'HOUR_LIMIT'
+            ? 'Terlalu banyak request reaction hari ini. Coba lagi nanti.'
+            : 'Terlalu banyak request reaction. Coba lagi sebentar.',
+        retryAfter,
+      });
+    }
+
+    res.setHeader('X-RateLimit-Remaining-Minute', String(rateLimit.remainingMinute));
+    res.setHeader('X-RateLimit-Remaining-Hour', String(rateLimit.remainingHour));
+  } catch (rateLimitError) {
+    // Fail closed: if the limiter cannot be checked, do not allow an
+    // unbounded request path to reach the queue/upstream service.
+    console.error('[reaction-rate-limit-error]', rateLimitError);
+    return res.status(503).json({
+      success: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      message: 'Proteksi request sedang tidak tersedia. Coba lagi.',
     });
   }
 
