@@ -15,6 +15,7 @@ import { logEvent } from '../../lib/logger';
 import {
   enqueueReaction,
   getReactionStatus,
+  findRecentDuplicateReaction,
 } from '../../lib/reactionQueue';
 
 export const config = {
@@ -106,6 +107,32 @@ export default async function handler(req, res) {
   const authUser = await verifyRequestUser(req);
   const isAuthenticatedUser = Boolean(authUser && !authUser.isAnonymous);
   const identifier = isAuthenticatedUser ? authUser.uid : hashIp(ip);
+  const rateLimitIdentity = isAuthenticatedUser
+    ? 'uid:' + authUser.uid
+    : 'ip:' + identifier;
+
+  // Abuse detection runs before CAPTCHA/rate-limit work so identities that
+  // repeatedly trigger suspicious behavior are temporarily blocked.
+  try {
+    const abuse = await checkReactionAbuse(rateLimitIdentity);
+    if (abuse.blocked) {
+      const retryAfter = Math.max(1, Number(abuse.retryAfter || 60));
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        success: false,
+        code: 'ABUSE_BLOCKED',
+        message: 'Terlalu banyak aktivitas mencurigakan. Coba lagi nanti.',
+        retryAfter,
+      });
+    }
+  } catch (abuseError) {
+    console.error('[reaction-abuse-check]', abuseError);
+    return res.status(503).json({
+      success: false,
+      code: 'ABUSE_CHECK_UNAVAILABLE',
+      message: 'Proteksi keamanan sedang tidak tersedia. Coba lagi.',
+    });
+  }
 
   // Idempotency lookup happens before CAPTCHA verification. If the browser
   // lost the response and retries the exact same requestId, the server returns
@@ -177,29 +204,6 @@ export default async function handler(req, res) {
   const rateLimitIdentity = isAuthenticatedUser
     ? 'uid:' + authUser.uid
     : 'ip:' + identifier;
-
-  // Abuse detection runs before CAPTCHA/rate-limit work so identities that
-  // repeatedly trigger suspicious behavior are temporarily blocked.
-  try {
-    const abuse = await checkReactionAbuse(rateLimitIdentity);
-    if (abuse.blocked) {
-      const retryAfter = Math.max(1, Number(abuse.retryAfter || 60));
-      res.setHeader('Retry-After', String(retryAfter));
-      return res.status(429).json({
-        success: false,
-        code: 'ABUSE_BLOCKED',
-        message: 'Terlalu banyak aktivitas mencurigakan. Coba lagi nanti.',
-        retryAfter,
-      });
-    }
-  } catch (abuseError) {
-    console.error('[reaction-abuse-check]', abuseError);
-    return res.status(503).json({
-      success: false,
-      code: 'ABUSE_CHECK_UNAVAILABLE',
-      message: 'Proteksi keamanan sedang tidak tersedia. Coba lagi.',
-    });
-  }
 
   try {
     const rateLimit = await checkReactionRateLimit(rateLimitIdentity, {
@@ -299,6 +303,35 @@ export default async function handler(req, res) {
         message: `Pilih 1 sampai ${maxEmojis} emoji reaction yang valid.`,
         maxEmojis,
       });
+    }
+
+    // Detect the same reaction payload submitted again with a new requestId.
+    // Only active queue items are considered, and identity is UID or hashed IP.
+    try {
+      const duplicate = await findRecentDuplicateReaction({
+        firebaseUid: identifier,
+        url: urlCheck.url,
+        emojis: reactionCheck.list,
+        windowSeconds: 60,
+      });
+
+      if (duplicate) {
+        return res.status(202).json({
+          success: true,
+          code: 'DUPLICATE_REQUEST',
+          message: 'Reaction yang sama sudah ada di antrean.',
+          requestId: duplicate.requestId,
+          status: duplicate.status,
+          plan: duplicate.plan,
+          cost: duplicate.cost,
+          attempts: duplicate.attempts,
+          duplicate: true,
+        });
+      }
+    } catch (duplicateError) {
+      // Duplicate detection is an optimization; idempotent enqueue remains
+      // the final protection against double spending.
+      console.error('[reaction-duplicate-check]', duplicateError);
     }
 
     if (user.isNew) {
