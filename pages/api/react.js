@@ -201,10 +201,6 @@ export default async function handler(req, res) {
   // Rate limit after CAPTCHA so invalid/automated requests cannot consume the
   // application quota before passing the bot challenge. The identity is either
   // a verified Firebase UID or a server-derived hashed IP; no raw IP is stored.
-  const rateLimitIdentity = isAuthenticatedUser
-    ? 'uid:' + authUser.uid
-    : 'ip:' + identifier;
-
   try {
     const rateLimit = await checkReactionRateLimit(rateLimitIdentity, {
       perMinute: 10,
