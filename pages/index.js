@@ -95,6 +95,27 @@ export default function Home() {
 
       <GlobalStats />
 
+      <section className="paper-card note-yellow" style={{ maxWidth: 900, margin: '28px auto' }}>
+        <span className="tape tape-red" aria-hidden="true" />
+        <div className="card-label">VIP / BENEFITS</div>
+        <h2>💎 Upgrade ke VIP</h2>
+        <p className="muted">
+          Dapatkan jalur reaction yang lebih cepat dan tools lengkap untuk penggunaan rutin.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))',
+          gap: 10,
+          marginTop: 16,
+        }}>
+          <div>⚡ <b>Prioritas antrean</b><br /><small>VIP diproses lebih dahulu.</small></div>
+          <div>🚀 <b>Proses lebih cepat</b><br /><small>Jalur worker VIP.</small></div>
+          <div>🔑 <b>API + API Key</b><br /><small>Untuk integrasi bot/app.</small></div>
+          <div>📊 <b>Dashboard lengkap</b><br /><small>Statistik penggunaan VIP.</small></div>
+          <div>♾️ <b>Riwayat lengkap</b><br /><small>History reaction tersimpan.</small></div>
+        </div>
+      </section>
+
       <section className="tiny-archive">
         <span className="archive-line" />
         <div><b>ARCHIVE NOTE</b><p>Paper outside. Queue inside. Results tracked.</p></div>
