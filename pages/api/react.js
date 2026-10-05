@@ -5,7 +5,12 @@ import { getOrCreateUser, peekUser } from '../../lib/coin';
 import { getSettings } from '../../lib/settings';
 import { recordNewUser, recordStat } from '../../lib/stats';
 import { verifyRequestUser } from '../../lib/userAuth';
-import { checkReactionRateLimit } from '../../lib/keys';
+import {
+  checkReactionRateLimit,
+  checkReactionAbuse,
+  recordReactionAbuse,
+  rewardReactionAbuseRecovery,
+} from '../../lib/keys';
 import { logEvent } from '../../lib/logger';
 import {
   enqueueReaction,
@@ -137,6 +142,7 @@ export default async function handler(req, res) {
       : '';
 
   if (!recaptchaToken) {
+    await recordReactionAbuse(rateLimitIdentity, 'captcha_failed').catch(() => {});
     return res.status(400).json({
       success: false,
       code: 'RECAPTCHA_REQUIRED',
@@ -157,6 +163,7 @@ export default async function handler(req, res) {
   }
 
   if (!captchaValid) {
+    await recordReactionAbuse(rateLimitIdentity, 'captcha_failed').catch(() => {});
     return res.status(403).json({
       success: false,
       code: 'RECAPTCHA_FAILED',
@@ -171,6 +178,29 @@ export default async function handler(req, res) {
     ? 'uid:' + authUser.uid
     : 'ip:' + identifier;
 
+  // Abuse detection runs before CAPTCHA/rate-limit work so identities that
+  // repeatedly trigger suspicious behavior are temporarily blocked.
+  try {
+    const abuse = await checkReactionAbuse(rateLimitIdentity);
+    if (abuse.blocked) {
+      const retryAfter = Math.max(1, Number(abuse.retryAfter || 60));
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        success: false,
+        code: 'ABUSE_BLOCKED',
+        message: 'Terlalu banyak aktivitas mencurigakan. Coba lagi nanti.',
+        retryAfter,
+      });
+    }
+  } catch (abuseError) {
+    console.error('[reaction-abuse-check]', abuseError);
+    return res.status(503).json({
+      success: false,
+      code: 'ABUSE_CHECK_UNAVAILABLE',
+      message: 'Proteksi keamanan sedang tidak tersedia. Coba lagi.',
+    });
+  }
+
   try {
     const rateLimit = await checkReactionRateLimit(rateLimitIdentity, {
       perMinute: 10,
@@ -182,6 +212,8 @@ export default async function handler(req, res) {
       res.setHeader('Retry-After', String(retryAfter));
       res.setHeader('X-RateLimit-Limit-Minute', '10');
       res.setHeader('X-RateLimit-Limit-Hour', '100');
+
+      await recordReactionAbuse(rateLimitIdentity, 'rate_limited').catch(() => {});
 
       console.warn('[reaction-rate-limit]', {
         reason: rateLimit.reason,
@@ -217,6 +249,7 @@ export default async function handler(req, res) {
   const urlCheck = validateWhatsAppChannelUrl(url);
 
   if (!urlCheck.valid) {
+    await recordReactionAbuse(rateLimitIdentity, 'invalid_request').catch(() => {});
     return res.status(400).json({
       success: false,
       code: 'INVALID_URL',
@@ -259,6 +292,7 @@ export default async function handler(req, res) {
     reactionCount = reactionCheck.list?.length || 1;
 
     if (!reactionCheck.valid) {
+      await recordReactionAbuse(rateLimitIdentity, 'invalid_request').catch(() => {});
       return res.status(400).json({
         success: false,
         code: 'INVALID_REACTION',
@@ -298,6 +332,7 @@ export default async function handler(req, res) {
       const code = errorCode(queueError);
 
       if (code === 'NO_COIN') {
+        await recordReactionAbuse(rateLimitIdentity, 'no_coin').catch(() => {});
         const profile = await peekUser(identifier).catch(() => ({ coin: user.coin }));
         return res.status(402).json({
           success: false,
@@ -332,6 +367,8 @@ export default async function handler(req, res) {
     }));
 
     const status = queued.status || 'waiting';
+
+    await rewardReactionAbuseRecovery(rateLimitIdentity).catch(() => {});
 
     await logEvent('reaction_queued', 'Reaction masuk antrean.', {
       plan,
