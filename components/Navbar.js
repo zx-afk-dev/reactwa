@@ -7,6 +7,7 @@ const MENU = [
   { href: '/redeem', label: 'Redeem Coin / VIP', icon: '◆' },
   { href: '/referral', label: 'Undang Teman', icon: '↗' },
   { href: '/docs', label: 'Docs', icon: '✎' },
+  { href: '/reactions', label: 'VIP History', icon: '♾️' },
   { href: '/changelog', label: 'Changelog', icon: '⌁' },
 ];
 
