@@ -15,7 +15,7 @@ const MENU = [
 ];
 
 export default function Navbar() {
-  const { user, ready, isGoogleUser, signInGoogle, logout, error, authBusy } = useAuth();
+  const { user, ready, isGoogleUser, isVip, signInGoogle, logout, error, authBusy } = useAuth();
   const [open, setOpen] = useState(false);
 
   async function handleAuth() {
@@ -46,7 +46,7 @@ export default function Navbar() {
 
       <div className={`nav-drawer ${open ? 'open' : ''}`}>
         <nav className="nav-links" aria-label="Main navigation">
-          {MENU.map((item) => (
+          {MENU.filter((item) => !item.href.startsWith('/vip') || isVip).map((item) => (
             <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
               <span aria-hidden="true">{item.icon}</span>{item.label}
             </Link>
