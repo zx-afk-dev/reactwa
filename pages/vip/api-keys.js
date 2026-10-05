@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Layout from '../../components/Layout';
-import { useAuth } from '../components/AuthProvider';
+import { useAuth } from '../../components/AuthProvider';
 
 export default function VipApiKeys() {
   const { ready, isGoogleUser, getIdToken } = useAuth();
