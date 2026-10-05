@@ -210,8 +210,8 @@ export default async function handler(req, res) {
     if (!rateLimit.ok) {
       const retryAfter = Math.max(1, Number(rateLimit.retryAfter || 60));
       res.setHeader('Retry-After', String(retryAfter));
-      res.setHeader('X-RateLimit-Limit-Minute', '10');
-      res.setHeader('X-RateLimit-Limit-Hour', '100');
+      res.setHeader('X-RateLimit-Limit-Minute', apiKeyUser ? '30' : '10');
+      res.setHeader('X-RateLimit-Limit-Hour', apiKeyUser ? '1000' : '100');
 
       await recordReactionAbuse(rateLimitIdentity, 'rate_limited').catch(() => {});
 
